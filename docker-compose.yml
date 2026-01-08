@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  task-agent:
+    build: .
+    container_name: task-agent 
+    restart: unless-stopped
+    volumes: 
+      - ./data/${ENVIRONMENT}:/app/data/${ENVIRONMENT}
+    env_file:
+      - .env.${ENVIRONMENT:-dev}
+    logging:
+      driver: "json-file"
+      options: 
+        max-size: "10m"
+        max-file: "3"

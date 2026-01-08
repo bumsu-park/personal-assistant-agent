@@ -3,7 +3,8 @@ from pathlib import Path
 from dotenv import load_dotenv 
 
 project_root = Path(__file__).parent.parent 
-load_dotenv(project_root / '.env')
+environment = os.getenv("ENVIRONMENT", "dev")
+load_dotenv(project_root / f'.env.{environment}')
 
 class Config:
     # LLM 
@@ -14,14 +15,26 @@ class Config:
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     ALLOWED_TELEGRAM_USER_IDS = os.getenv("ALLOWED_TELEGRAM_USER_IDS", "").split(",")
     
-    # Database
-    DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{project_root}/data/app.db")
+    # Google Calendar Credentials
+    GOOGLE_CALENDAR_CREDENTIALS_PATH = os.getenv("GOOGLE_CALENDAR_CREDENTIALS_PATH", "")
+
+    # CalDAV Credentials
+    GOOGLE_CALENDAR_EMAIL = os.getenv("GOOGLE_CALENDAR_EMAIL", "")
+    GOOGLE_APP_PASSWORD = os.getenv("GOOGLE_APP_PASSWORD", "")
+    
+    ICLOUD_EMAIL = os.getenv("ICLOUD_EMAIL", "")
+    ICLOUD_APP_PASSWORD = os.getenv("ICLOUD_APP_PASSWORD", "")
+    
+    
     
     # Paths 
-    DATA_DIR = project_root / "data"
+    DATA_DIR = project_root / "data" / environment
     VECTOR_STORE_DIR = DATA_DIR / "vector_store"
     QDRANT_DB_PATH = DATA_DIR / "qdrant_db" 
     CHECKPOINTS_DIR = DATA_DIR / "checkpoints"
+    
+    # Database
+    DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{DATA_DIR}/app.db")
     
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     

@@ -1,0 +1,12 @@
+venv/
+.venv/
+data/
+*.pyc
+__pycache__/
+.git/
+.env*
+!.env.example
+README.md
+PROGRESS.md
+.gitignore
+.DS_Store

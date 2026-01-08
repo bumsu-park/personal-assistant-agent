@@ -41,8 +41,9 @@ Thumbs.db
 .ipynb_checkpoints/
 
 # Google Calendar credentials
+goog_calendar_credentials.json
 credentials.json
-token.json
+goog_token.json
 
 # Vector store data
 chroma_db/
@@ -50,3 +51,10 @@ vector_store/
 
 # Telegram bot session files
 *.session
+
+# Environment-specific files
+.env.dev
+.env.prod
+data/dev/
+data/prod/
+
