@@ -103,6 +103,12 @@ async def rag_node(state: AgentState) -> AgentState:
     logger.info(f"RAG Node - user: {state.user_id}")
 
     rag_service = get_rag_service()
+    
+    if rag_service is not None:
+        logger.warning("RAG service not available, falling back to agent")
+        state.next_action = "agent"
+        return state
+    
     user_query = state.messages[-1].content
 
     retrieved_docs = rag_service.search_document(

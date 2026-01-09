@@ -68,6 +68,11 @@ async def ingest_url_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         chunks, metadata = await scrape_and_chunk(url)
         
         rag_service = get_rag_service()
+        
+        if rag_service is None:
+            await update.message.reply_text("❌ URL ingestion feature is not available (RAG dependencies not installed)")
+            return 
+        
         rag_service.add_documents(
             chunks, 
             metadata,

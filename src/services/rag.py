@@ -1,13 +1,21 @@
 import logging 
 import time
 import uuid
-from typing import List, Dict 
-from langchain_openai import OpenAIEmbeddings
+from typing import List, Dict, Optional
 from src.config import Config 
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
+
 
 logger = logging.getLogger(__name__)
+
+try:
+    from langchain_openai import OpenAIEmbeddings
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
+    RAG_AVAILABLE = True
+except ImportError:
+    logger.warning("RAG dependencies not installed")
+    RAG_AVAILABLE = False
+    
 
 class RAGService: 
     
@@ -103,7 +111,10 @@ class RAGService:
 
 _rag_service = None
 
-def get_rag_service() -> RAGService:
+def get_rag_service() -> Optional[RAGService]:
+    if not RAG_AVAILABLE:
+        return None
+    
     global _rag_service
     if _rag_service is None:
         _rag_service = RAGService()
