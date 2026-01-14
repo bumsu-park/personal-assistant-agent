@@ -25,6 +25,9 @@ class Config:
     ICLOUD_EMAIL = os.getenv("ICLOUD_EMAIL", "")
     ICLOUD_APP_PASSWORD = os.getenv("ICLOUD_APP_PASSWORD", "")
     
+    AMAZON_EMAIL = os.getenv("AMAZON_EMAIL")
+    AMAZON_PASSWORD = os.getenv("AMAZON_PASSWORD")
+    AMAZON_URL = os.getenv("AMAZON_URL", "amazon.com")
     
     
     # Paths 
@@ -32,6 +35,7 @@ class Config:
     VECTOR_STORE_DIR = DATA_DIR / "vector_store"
     QDRANT_DB_PATH = DATA_DIR / "qdrant_db" 
     CHECKPOINTS_DIR = DATA_DIR / "checkpoints"
+    ALEXA_DATA_DIR = DATA_DIR / "alexa"
     
     # Database
     DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{DATA_DIR}/app.db")
@@ -54,3 +58,4 @@ class Config:
         cls.QDRANT_DB_PATH.mkdir(parents=True, exist_ok=True)
         cls.VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
         cls.CHECKPOINTS_DIR.mkdir(parents=True, exist_ok=True) 
+        cls.ALEXA_DATA_DIR.mkdir(parents=True, exist_ok=True)

@@ -52,3 +52,5 @@ icalendar>=5.0.0
 vobject >=0.9.6
 
 pytz
+
+alexapy>=1.29.0
