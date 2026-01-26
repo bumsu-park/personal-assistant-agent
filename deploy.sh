@@ -24,5 +24,5 @@ docker run -d \
   bspark2318/task-agent:arm64
 
 echo "Container started. Showing logs..."
-docker logs -f task-agent
+docker logs --tail 50 task-agent
 EOF

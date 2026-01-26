@@ -17,6 +17,7 @@ class Config:
     
     # Google Calendar Credentials
     GOOGLE_CALENDAR_CREDENTIALS_PATH = os.getenv("GOOGLE_CALENDAR_CREDENTIALS_PATH", "")
+    GMAIL_CREDENTIALS_PATH = os.getenv("GMAIL_CREDENTIALS_PATH", "")
 
     # CalDAV Credentials
     GOOGLE_CALENDAR_EMAIL = os.getenv("GOOGLE_CALENDAR_EMAIL", "")
@@ -28,6 +29,7 @@ class Config:
     AMAZON_EMAIL = os.getenv("AMAZON_EMAIL")
     AMAZON_PASSWORD = os.getenv("AMAZON_PASSWORD")
     AMAZON_URL = os.getenv("AMAZON_URL", "amazon.com")
+    AMAZON_OTP = os.getenv("AMAZON_OTP", "")
     
     
     # Paths 

@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from src.agent.state import AgentState
 from src.services.llm import get_llm_service
 from src.services.rag import get_rag_service
@@ -14,25 +16,27 @@ logger = logging.getLogger(__name__)
 
 _calendar_tools = [
     create_calendar_event,
-    search_calendar_events,
+search_calendar_events,
     list_calendar_events,
     delete_calendar_event
 ]
 
-_llm_with_tools = get_llm_service().get_llm().bind_tools(_calendar_tools)
+_all_tools = _calendar_tools
+
+_llm_with_tools = get_llm_service().get_llm().bind_tools(_all_tools)
 
 async def agent_node(state: AgentState) -> AgentState:
     """Main agent node that decides whether to use tools or respond directly."""
     logger.info(f"Agent Node - user: {state.user_id}")
+    current_date = datetime.now(ZoneInfo("America/New_York")).strftime("%A, %Y-%m-%d %H:%M:%S")
     
-    if not state.messages or not isinstance(state.messages[0], SystemMessage):
-        from datetime import datetime
-        from zoneinfo import ZoneInfo
-        current_date = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S")
-        system_msg = SystemMessage(
-            content=f"You are a helpful assistant. Current date and time: {current_date} EST/EDT")
+    system_msg = SystemMessage(content=f"You are a helpful assistant. Current date and time: {current_date} EST/EDT")
+    
+    if state.messages and isinstance(state.messages[0], SystemMessage):
+        state.messages[0] = system_msg
+    else:
         state.messages.insert(0, system_msg)
-
+    
     response = await _llm_with_tools.ainvoke(state.messages)
 
     state.messages.append(response)
@@ -75,7 +79,10 @@ async def tool_node(state: AgentState) -> AgentState:
 
         if tool:
             try:
-                result = tool.invoke(tool_args)
+                try:
+                    result = await tool.ainvoke(tool_args)
+                except NotImplementedError:
+                    result = tool.invoke(tool_args)
                 tool_messages.append(
                     ToolMessage(content=str(result), tool_call_id=tool_id)
                 )

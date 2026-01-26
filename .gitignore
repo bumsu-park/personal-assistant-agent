@@ -58,3 +58,4 @@ vector_store/
 data/dev/
 data/prod/
 
+gmail_credentials.json

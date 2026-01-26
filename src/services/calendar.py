@@ -1,12 +1,14 @@
 import logging 
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from caldav import DAVClient, Calendar
-from caldav.lib.error import DAVError
+from caldav import DAVClient
 from langchain_core.tools import tool 
 from icalendar import Calendar as iCalendar, Event as IEvent 
 import pytz
 from src.config import Config 
+import dateparser
+from datetime import datetime 
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +90,7 @@ class CalendarService:
                 event.add_component(alarm)
                 second_alarm = Alarm()
                 second_alarm.add('action', 'DISPLAY')
-                second_alarm.add('trigger', timedelta(days=1))
+                second_alarm.add('trigger', timedelta(days=-1))
                 second_alarm.add('description', f'Reminder: {summary}')
                 event.add_component(second_alarm)
                 
@@ -222,8 +224,9 @@ def get_all_calendars() -> List[CalendarService]:
 @tool
 def create_calendar_event(
     summary: str,
-    start_time: str,
-    end_time: str,
+    date: str, 
+    time: str,
+    duration_minutes: int = 60,
     description: str = "",
     location: str = "",
     timezone: str = "America/New_York"
@@ -232,21 +235,50 @@ def create_calendar_event(
     Create a calendar event in iCloud calendar.
     Args:
         summary: Event title
-        start_time: ISO format datetime string (e.g., "2024-01-15T14:00:00")
-        end_time: ISO format datetime string
+        date: Date in natural language or absolute format (e.g., "saturday", "tomorrow", "jan 24", "2026-01-24")
+        time: Time of the event (e.g., "2pm", "14:00", "3:30pm")
+        duration_minutes: Duration of event in minutes (default: 60)
         description: Event description
         location: Event location
         timezone: Timezone (default: America/New_York)
     Returns:
         Success message
     """
+    tz = ZoneInfo(timezone)
+    now = datetime.now(tz)
+    
+    parsed_date = dateparser.parse(
+        date, 
+        settings= {
+            "TIMEZONE": timezone,
+            "PREFER_DATES_FROM": "future",
+            "RELATIVE_BASE": now.replace(tzinfo=None)
+        }
+    )
+    
+    if not parsed_date:
+        return f"Error: could not parse date'{date}'"
+    
+    parsed_time = dateparser.parse(time)
+    if not parsed_time:
+        return f"Error: could not parse time'{time}'"
+    
+    start_dt = parsed_date.replace(
+        hour=parsed_time.hour,
+        minute=parsed_time.minute,
+        second=0,
+        microsecond=0
+    )
+    
+    if start_dt.tzinfo is None:
+        start_dt = start_dt.replace(tzinfo=tz)
+    
+    end_dt = start_dt + timedelta(minutes=duration_minutes)
+    
     calendars = get_all_calendars()
     
     if not calendars:
         return "Error: No iCloud calendar configured. Please set up iCloud credentials."
-
-    start_dt = datetime.fromisoformat(start_time)
-    end_dt = datetime.fromisoformat(end_time)
 
     calendar = calendars[0]
 
