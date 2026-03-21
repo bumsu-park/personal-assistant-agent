@@ -47,6 +47,7 @@ class Config:
     # FastAPI
     FASTAPI_HOST = os.getenv("FASTAPI_HOST", "0.0.0.0")
     FASTAPI_PORT = int(os.getenv("FASTAPI_PORT", "8000"))
+    API_KEY = os.getenv("API_KEY", "")
     
     @classmethod 
     def validate(cls) -> None:

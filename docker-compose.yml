@@ -4,6 +4,8 @@ services:
     build: .
     container_name: task-agent 
     restart: unless-stopped
+    ports:
+      - "8000:8000"
     volumes: 
       - ./data/${ENVIRONMENT}:/app/data/${ENVIRONMENT}
     env_file:
@@ -13,3 +15,13 @@ services:
       options: 
         max-size: "10m"
         max-file: "3"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - task-agent

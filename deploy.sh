@@ -21,6 +21,7 @@ docker run -d \
   --name task-agent \
   --restart unless-stopped \
   --env-file /home/pi/Deployment/personal-agent/.env.prod \
+  -v /home/pi/Deployment/personal-agent/gmail_credentials.json:/app/gmail_credentials.json:ro \
   bspark2318/task-agent:arm64
 
 echo "Container started. Showing logs..."
