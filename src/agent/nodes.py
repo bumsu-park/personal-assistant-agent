@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from src.agent.state import AgentState
+from src.config import Config
 from src.services.llm import get_llm_service
 from src.services.rag import get_rag_service
 from src.services.calendar import (
@@ -44,6 +45,10 @@ async def agent_node(state: AgentState) -> AgentState:
     else:
         state.messages.insert(0, system_msg)
     
+    max_msgs = Config.MAX_MESSAGES
+    if len(state.messages) > max_msgs:
+        state.messages = [state.messages[0]] + state.messages[-(max_msgs - 1):]
+
     response = await _llm_with_tools.ainvoke(state.messages)
 
     state.messages.append(response)

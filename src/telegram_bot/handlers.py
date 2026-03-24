@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from telegram import Update
 from telegram.ext import ContextTypes
 from langchain_core.messages import HumanMessage
@@ -41,9 +43,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             messages=[HumanMessage(content=user_message)]
         )
         graph_state = await get_agent_state_graph()
+        today = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
         result = await graph_state.ainvoke(
             state,
-            config={"configurable": {"thread_id": str(user.id)}} 
+            config={"configurable": {"thread_id": f"{user.id}_{today}"}} 
         )
         
         ai_response = result["messages"][-1].content

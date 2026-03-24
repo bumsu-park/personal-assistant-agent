@@ -20,5 +20,4 @@ ssh pi@192.168.1.234 'cd /home/pi/Deployment/personal-agent && \
   docker rm task-agent cloudflared 2>/dev/null; \
   docker pull bspark2318/task-agent:arm64 && \
   ENVIRONMENT=prod docker compose up -d --force-recreate && \
-  docker image prune -f && \
-  ENVIRONMENT=prod docker compose logs --tail 50'
+  docker image prune -f'

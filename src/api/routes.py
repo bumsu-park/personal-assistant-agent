@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
@@ -32,9 +34,10 @@ async def chat(request: ChatRequest, x_api_key: str = Header(...)):
         messages=[HumanMessage(content=request.message)],
     )
     graph = await get_agent_state_graph()
+    today = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
     result = await graph.ainvoke(
         state,
-        config={"configurable": {"thread_id": request.user_id}},
+        config={"configurable": {"thread_id": f"{request.user_id}_{today}"}},
     )
 
     ai_response = result["messages"][-1].content

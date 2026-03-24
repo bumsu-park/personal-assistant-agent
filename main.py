@@ -3,6 +3,7 @@ import logging
 from src.config import Config
 from src.telegram_bot.bot import create_bot
 from src.api.server import start_api
+from src.services.memory import purge_old_checkpoints
 
 logging.basicConfig(
     level=Config.LOG_LEVEL,
@@ -22,6 +23,20 @@ async def run_telegram_bot():
         await stop_event.wait()
 
 
+async def run_periodic_checkpoint_purge():
+    interval_seconds = max(1, Config.CHECKPOINT_PURGE_INTERVAL_HOURS) * 60 * 60
+    while True:
+        try:
+            await purge_old_checkpoints()
+            await asyncio.sleep(interval_seconds)
+        except asyncio.CancelledError:
+            logger.info("Periodic checkpoint purge task cancelled.")
+            raise
+        except Exception as e:
+            logger.exception("Periodic checkpoint purge failed: %s", e)
+            await asyncio.sleep(interval_seconds)
+
+
 async def main():
     try:
         Config.validate()
@@ -30,6 +45,7 @@ async def main():
         await asyncio.gather(
             run_telegram_bot(),
             start_api(),
+            run_periodic_checkpoint_purge(),
         )
     except Exception as e:
         logger.exception("Failed while executing main function: %s", e)

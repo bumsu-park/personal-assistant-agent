@@ -42,6 +42,12 @@ class Config:
     # Database
     DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{DATA_DIR}/app.db")
     
+    MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", "50"))
+    CHECKPOINT_PURGE_DAYS = int(os.getenv("CHECKPOINT_PURGE_DAYS", "7"))
+    CHECKPOINT_PURGE_INTERVAL_HOURS = int(
+        os.getenv("CHECKPOINT_PURGE_INTERVAL_HOURS", "6")
+    )
+    
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     
     # FastAPI
