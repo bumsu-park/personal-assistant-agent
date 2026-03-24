@@ -1,8 +1,22 @@
-import logging 
+"""
+DEPRECATED: Telegram bot interface.
+Superseded by the FastAPI-based API (src/api/). Kept for backward compatibility
+but no longer actively maintained. Will be removed in a future release.
+"""
+
+import logging
+import warnings
+
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters 
-from src.config import Config 
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from src.config import Config
 from src.telegram_bot.handlers import start_command, help_command, handle_message, handle_image, handle_unknown, ingest_url_command
+
+warnings.warn(
+    "telegram_bot.bot is deprecated — use the FastAPI API instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 logger = logging.getLogger(__name__)
 

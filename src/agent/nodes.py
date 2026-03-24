@@ -5,12 +5,12 @@ from src.agent.state import AgentState
 from src.config import Config
 from src.services.llm import get_llm_service
 from src.services.rag import get_rag_service
-from src.services.calendar import (
-    create_calendar_event,
-    search_calendar_events,
-    list_calendar_events,
-    delete_calendar_event
-)
+# from src.services.calendar import (
+#     create_calendar_event,
+#     search_calendar_events,
+#     list_calendar_events,
+#     delete_calendar_event
+# )
 from src.services.gmail import (
     retrieve_and_summarize_unread_emails,
 )
@@ -18,18 +18,18 @@ from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 
 logger = logging.getLogger(__name__)
 
-_calendar_tools = [
-    create_calendar_event,
-search_calendar_events,
-    list_calendar_events,
-    delete_calendar_event
-]
+# _calendar_tools = [
+#     create_calendar_event,
+#     search_calendar_events,
+#     list_calendar_events,
+#     delete_calendar_event
+# ]
 
 _gmail_tools = [
     retrieve_and_summarize_unread_emails
 ]
 
-_all_tools = _calendar_tools + _gmail_tools
+_all_tools = _gmail_tools
 
 _llm_with_tools = get_llm_service().get_llm().bind_tools(_all_tools)
 
@@ -73,10 +73,10 @@ async def tool_node(state: AgentState) -> AgentState:
         return state
 
     tools_map = {
-        "create_calendar_event": create_calendar_event,
-        "search_calendar_events": search_calendar_events,
-        "list_calendar_events": list_calendar_events,
-        "delete_calendar_event": delete_calendar_event,
+        # "create_calendar_event": create_calendar_event,
+        # "search_calendar_events": search_calendar_events,
+        # "list_calendar_events": list_calendar_events,
+        # "delete_calendar_event": delete_calendar_event,
         "retrieve_and_summarize_unread_emails": retrieve_and_summarize_unread_emails,
     }
 

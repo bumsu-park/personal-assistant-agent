@@ -2,10 +2,10 @@ services:
   task-agent:
     image: bspark2318/task-agent:arm64
     build: .
-    container_name: task-agent 
+    container_name: task-agent-${ENVIRONMENT:-dev}
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${FASTAPI_PORT:-8000}:${FASTAPI_PORT:-8000}"
     volumes: 
       - ./data/${ENVIRONMENT}:/app/data/${ENVIRONMENT}
       - ./gmail_credentials.json:/app/gmail_credentials.json:ro
@@ -19,7 +19,7 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: cloudflared
+    container_name: cloudflared-${ENVIRONMENT:-dev}
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     # Same file as task-agent — cloudflared reads TUNNEL_TOKEN (Cloudflare’s name).

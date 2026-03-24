@@ -11,7 +11,7 @@ class Config:
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     
-    # Telegram Bot
+    # Telegram Bot (DEPRECATED — superseded by FastAPI API, will be removed)
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     ALLOWED_TELEGRAM_USER_IDS = os.getenv("ALLOWED_TELEGRAM_USER_IDS", "").split(",")
     
@@ -59,8 +59,6 @@ class Config:
     def validate(cls) -> None:
         if not cls.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY is not set in environment variables.")
-        if not cls.TELEGRAM_BOT_TOKEN:
-            raise ValueError("TELEGRAM_BOT_TOKEN is not set in environment variables.")
         
 
         cls.DATA_DIR.mkdir(parents=True, exist_ok=True)

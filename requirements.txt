@@ -8,7 +8,7 @@ langgraph-checkpoint-sqlite>=1.0.0
 openai>=1.0.0
 langchain-openai>=0.0.2
 
-# Telegram Bot
+# Telegram Bot (DEPRECATED — will be removed in a future release)
 python-telegram-bot>=21.0
 
 # API Server

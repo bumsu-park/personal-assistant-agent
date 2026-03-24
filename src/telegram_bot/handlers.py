@@ -1,3 +1,9 @@
+"""
+DEPRECATED: Telegram bot handlers.
+Superseded by the FastAPI-based API (src/api/). Kept for backward compatibility
+but no longer actively maintained. Will be removed in a future release.
+"""
+
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo

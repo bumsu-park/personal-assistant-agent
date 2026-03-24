@@ -16,8 +16,8 @@ ssh pi@192.168.1.234 'cd /home/pi/Deployment/personal-agent && \
   mkdir -p data/prod; \
   sudo chown -R 1000:1000 data; \
   sudo chmod -R u+rwX data; \
-  docker stop task-agent cloudflared 2>/dev/null; \
-  docker rm task-agent cloudflared 2>/dev/null; \
+  docker stop task-agent-prod cloudflared-prod 2>/dev/null; \
+  docker rm task-agent-prod cloudflared-prod 2>/dev/null; \
   docker pull bspark2318/task-agent:arm64 && \
   ENVIRONMENT=prod docker compose up -d --force-recreate && \
   docker image prune -f'

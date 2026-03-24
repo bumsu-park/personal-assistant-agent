@@ -1,7 +1,6 @@
 import asyncio
 import logging
 from src.config import Config
-from src.telegram_bot.bot import create_bot
 from src.api.server import start_api
 from src.services.memory import purge_old_checkpoints
 
@@ -13,6 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 async def run_telegram_bot():
+    """DEPRECATED: Telegram bot — superseded by FastAPI API. Will be removed in a future release."""
+    if not Config.TELEGRAM_BOT_TOKEN:
+        logger.info("TELEGRAM_BOT_TOKEN not set — skipping deprecated Telegram bot.")
+        return
+    from src.telegram_bot.bot import create_bot
+
+    logger.warning("Starting deprecated Telegram bot. Migrate to the FastAPI API.")
     app = create_bot()
     async with app:
         await app.initialize()
@@ -43,7 +49,7 @@ async def main():
         logger.info("Configuration validated successfully.")
 
         await asyncio.gather(
-            run_telegram_bot(),
+            # run_telegram_bot(),  # DEPRECATED — superseded by FastAPI API
             start_api(),
             run_periodic_checkpoint_purge(),
         )
