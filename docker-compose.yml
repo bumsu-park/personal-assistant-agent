@@ -1,6 +1,6 @@
-version: '3.8'
 services:
   task-agent:
+    image: bspark2318/task-agent:arm64
     build: .
     container_name: task-agent 
     restart: unless-stopped
@@ -8,6 +8,7 @@ services:
       - "8000:8000"
     volumes: 
       - ./data/${ENVIRONMENT}:/app/data/${ENVIRONMENT}
+      - ./gmail_credentials.json:/app/gmail_credentials.json:ro
     env_file:
       - .env.${ENVIRONMENT:-dev}
     logging:
@@ -21,7 +22,8 @@ services:
     container_name: cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    # Same file as task-agent — cloudflared reads TUNNEL_TOKEN (Cloudflare’s name).
+    env_file:
+      - .env.${ENVIRONMENT:-dev}
     depends_on:
       - task-agent

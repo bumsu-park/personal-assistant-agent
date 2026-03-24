@@ -9,21 +9,14 @@ docker push bspark2318/task-agent:arm64
 
 echo "=== Deploying to Raspberry Pi ==="
 ssh pi@192.168.1.234 << 'EOF'
+cd /home/pi/Deployment/personal-agent
+
 echo "Pulling new image..."
 docker pull bspark2318/task-agent:arm64
 
-echo "Stopping old container..."
-docker stop task-agent || true
-docker rm task-agent || true
+echo "Restarting services..."
+ENVIRONMENT=prod docker compose up -d --force-recreate
 
-echo "Starting new container..."
-docker run -d \
-  --name task-agent \
-  --restart unless-stopped \
-  --env-file /home/pi/Deployment/personal-agent/.env.prod \
-  -v /home/pi/Deployment/personal-agent/gmail_credentials.json:/app/gmail_credentials.json:ro \
-  bspark2318/task-agent:arm64
-
-echo "Container started. Showing logs..."
-docker logs --tail 50 task-agent
+echo "Services started. Showing logs..."
+docker compose logs --tail 50
 EOF
