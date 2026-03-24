@@ -87,14 +87,14 @@ def retrieve_and_summarize_unread_emails(
     Retrieve unread emails and summarize the important ones.
     
     Args:
-        query_hours: Number of hours back to search for unread emails (default: 24)
-        max_results: Maximum number of emails to retrieve (default: 20)
+        query_hours: How many hours back to search. Defaults to 24. Use larger values when the user asks for older emails (e.g. 168 for a week, 720 for a month).
+        max_results: Maximum number of emails to retrieve (default: 20). Increase if the user wants a thorough scan.
     
     Returns:
         Summary of important emails with action items, filtered to exclude spam and promotions
     '''
     newer_than_parameter = f"newer_than:{query_hours}h"
-    query_parameter_list = ["is:unread", newer_than_parameter, "-category:promotions", "-category:social", "-category:updates"]
+    query_parameter_list = ["is:unread", newer_than_parameter, "-category:promotions"]
     query_parameter = " ".join(query_parameter_list)
     
     try: 
