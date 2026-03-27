@@ -1,32 +1,15 @@
 import asyncio
+import importlib
 import logging
-from src.config import Config
-from src.api.server import start_api
-from src.services.memory import purge_old_checkpoints
+import os
+from src.core.config import Config
+from src.core.memory import purge_old_checkpoints
 
 logging.basicConfig(
     level=Config.LOG_LEVEL,
     format="%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-
-async def run_telegram_bot():
-    """DEPRECATED: Telegram bot — superseded by FastAPI API. Will be removed in a future release."""
-    if not Config.TELEGRAM_BOT_TOKEN:
-        logger.info("TELEGRAM_BOT_TOKEN not set — skipping deprecated Telegram bot.")
-        return
-    from src.telegram_bot.bot import create_bot
-
-    logger.warning("Starting deprecated Telegram bot. Migrate to the FastAPI API.")
-    app = create_bot()
-    async with app:
-        await app.initialize()
-        await app.start()
-        await app.updater.start_polling()
-        logger.info("Telegram bot started and polling for updates")
-        stop_event = asyncio.Event()
-        await stop_event.wait()
 
 
 async def run_periodic_checkpoint_purge():
@@ -48,9 +31,11 @@ async def main():
         Config.validate()
         logger.info("Configuration validated successfully.")
 
+        agent_name = os.getenv("AGENT", "personal")
+        agent_module = importlib.import_module(f"src.agents.{agent_name}.main")
+
         await asyncio.gather(
-            # run_telegram_bot(),  # DEPRECATED — superseded by FastAPI API
-            start_api(),
+            agent_module.start(),
             run_periodic_checkpoint_purge(),
         )
     except Exception as e:

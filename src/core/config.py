@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv 
 
-project_root = Path(__file__).parent.parent 
+project_root = Path(__file__).parent.parent.parent
 environment = os.getenv("ENVIRONMENT", "dev")
 load_dotenv(project_root / f'.env.{environment}')
 

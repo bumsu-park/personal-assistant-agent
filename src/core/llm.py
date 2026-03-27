@@ -1,8 +1,9 @@
-import logging 
+import logging
 from langchain_openai import ChatOpenAI
-from src.config import Config 
+from src.core.config import Config
 
 logger = logging.getLogger(__name__)
+
 
 class LLMService:
     def __init__(self):
@@ -11,16 +12,17 @@ class LLMService:
             api_key=Config.OPENAI_API_KEY,
             model=Config.OPENAI_MODEL,
             temperature=0.5,
-            streaming=True
+            streaming=True,
         )
         logger.info("LLMService initialized successfully")
-    
+
     def get_llm(self):
         return self.llm
 
-# Singleton instance
+
 _llm_service = None
- 
+
+
 def get_llm_service():
     global _llm_service
     if _llm_service is None:
