@@ -1,19 +1,11 @@
-from pydantic import BaseModel, Field
+from typing import Annotated, Dict, Any
+from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
-from typing import List, Dict, Any
+from langgraph.graph.message import add_messages
 
 
-class AgentState(BaseModel):
-    messages: List[BaseMessage] = Field(
-        default_factory=list,
-        description="The list of messages exchanged in the conversation.",
-    )
-    user_id: str = Field(..., description="The unique identifier for the user.")
-    next_action: str = Field(default="", description="Next node to route to")
-    context: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional context information for the agent.",
-    )
-
-    class Config:
-        arbitrary_types_allowed = True
+class AgentState(TypedDict, total=False):
+    messages: Annotated[list[BaseMessage], add_messages]
+    user_id: str
+    next_action: str
+    context: Dict[str, Any]

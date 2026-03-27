@@ -5,7 +5,6 @@ from typing import Callable, Awaitable
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
-from src.core.state import AgentState
 from src.core.config import Config
 
 logger = logging.getLogger(__name__)
@@ -40,14 +39,13 @@ def create_app(
 
         logger.info(f"API chat request from user_id={request.user_id}")
 
-        state = AgentState(
-            user_id=request.user_id,
-            messages=[HumanMessage(content=request.message)],
-        )
         graph = await get_graph()
         today = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
         result = await graph.ainvoke(
-            state,
+            {
+                "user_id": request.user_id,
+                "messages": [HumanMessage(content=request.message)],
+            },
             config={"configurable": {"thread_id": f"{request.user_id}_{today}"}},
         )
         return ChatResponse(response=result["messages"][-1].content)

@@ -16,39 +16,38 @@ def create_nodes(
     tools_map = {t.name: t for t in tools}
     llm_with_tools = llm.bind_tools(tools)
 
-    async def agent_node(state: AgentState) -> AgentState:
-        logger.info(f"Agent Node - user: {state.user_id}")
+    async def agent_node(state: AgentState) -> dict:
+        logger.info(f"Agent Node - user: {state['user_id']}")
         system_msg = SystemMessage(content=system_prompt_builder())
 
-        if state.messages and isinstance(state.messages[0], SystemMessage):
-            state.messages[0] = system_msg
+        history = list(state["messages"])
+        if history and isinstance(history[0], SystemMessage):
+            history[0] = system_msg
         else:
-            state.messages.insert(0, system_msg)
+            history.insert(0, system_msg)
 
         max_msgs = Config.MAX_MESSAGES
-        if len(state.messages) > max_msgs:
-            state.messages = [state.messages[0]] + state.messages[-(max_msgs - 1) :]
+        if len(history) > max_msgs:
+            history = [history[0]] + history[-(max_msgs - 1) :]
 
-        response = await llm_with_tools.ainvoke(state.messages)
-        state.messages.append(response)
+        response = await llm_with_tools.ainvoke(history)
 
         if hasattr(response, "tool_calls") and response.tool_calls:
             logger.info(f"LLM requested {len(response.tool_calls)} tool calls")
-            state.next_action = "tools"
+            next_action = "tools"
         else:
             logger.info("No tool calls necessary")
-            state.next_action = "end"
+            next_action = "end"
 
-        return state
+        return {"messages": [response], "next_action": next_action}
 
-    async def tool_node(state: AgentState) -> AgentState:
-        logger.info(f"Tool Node - user: {state.user_id}")
-        last_message = state.messages[-1]
+    async def tool_node(state: AgentState) -> dict:
+        logger.info(f"Tool Node - user: {state['user_id']}")
+        last_message = state["messages"][-1]
 
         if not hasattr(last_message, "tool_calls") or not last_message.tool_calls:
             logger.warning("Tool node called but no tool calls found")
-            state.next_action = "end"
-            return state
+            return {"next_action": "end"}
 
         tool_messages = []
         for tool_call in last_message.tool_calls:
@@ -87,9 +86,6 @@ def create_nodes(
                     )
                 )
 
-        state.messages.extend(tool_messages)
-        state.next_action = "agent"
-
-        return state
+        return {"messages": tool_messages, "next_action": "agent"}
 
     return agent_node, tool_node

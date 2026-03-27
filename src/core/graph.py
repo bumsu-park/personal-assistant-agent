@@ -31,13 +31,13 @@ async def create_agent(
             now = datetime.now(ZoneInfo("America/New_York")).strftime(
                 "%A, %Y-%m-%d %H:%M:%S"
             )
-            return f"You are a helpful assistant. Current date and time: {now} EST/EDT"
+            return f"You are a helpful assistant named Wendy. Current date and time: {now} EST/EDT"
 
     llm = get_llm_service().get_llm()
     agent_node, tool_node = create_nodes(all_tools, llm, system_prompt_builder)
 
     def should_continue(state: AgentState) -> str:
-        return state.next_action
+        return state["next_action"]
 
     graph = StateGraph(AgentState)
     graph.add_node("agent", agent_node)
