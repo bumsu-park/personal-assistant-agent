@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field 
-from typing import Optional
+from typing import Literal, Optional
 
 class Email(BaseModel):
     id: str = Field(description="The unique email ID")
@@ -9,7 +9,14 @@ class Email(BaseModel):
     snippet: str = Field(description="Short preview of the email body")
     body: Optional[str] = Field(default=None, description="Full email body content")
     
+class EmailSummary(BaseModel):
+    sender: str = Field(description="Who the email is from")
+    subject: str = Field(description="Email subject line")
+    summary: str = Field(description="One to two sentence summary of what it's about")
+    category: str = Field(description="Type of email: meeting, request, FYI, billing, personal, etc.")
+    urgency: Literal["high", "medium", "low"] = Field(description="high = needs attention today, medium = this week, low = whenever")
+    action: Optional[str] = Field(default=None, description="What the user needs to do, if anything")
+
 class EmailSummaryOutput(BaseModel):
-    important_emails: list[str] = Field(description="Summary of each important email")
-    action_items: list[str] = Field(description="Things the user needs to do")
-    spam_count: int = Field(description="Number of emails ignored as spam/promotions")
+    emails: list[EmailSummary] = Field(description="Emails worth the user's attention")
+    spam_count: int = Field(description="Number of emails skipped as noise")

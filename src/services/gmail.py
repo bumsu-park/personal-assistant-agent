@@ -118,32 +118,33 @@ def retrieve_and_summarize_unread_emails(
         
         prompt = f"""Here are my unread emails from the last {query_hours} hours:
 {emails_summary}
-IMPORTANT: Be very selective. Only highlight emails that are:
-- From real people I know (not companies/marketing)
-- Require my direct response or action
-- Are time-sensitive (appointments, deadlines, confirmations)
-- Don't add any markdown formats. Just make it completely pure string.
-IGNORE completely:
-- Marketing emails, newsletters, promotions
-- Automated notifications (social media, app updates)
-- Shipping updates unless there's a problem
-- Subscription/service emails
-## Important Emails
-- [only truly important ones]
-## Action Items
-- [only things I actually need to do]
-If nothing is important, just say "No important emails."
+Review my emails and surface anything worth my attention. Use your judgment — 
+prioritize real people, time-sensitive items, and anything requiring action, 
+but don't be overly strict. When in doubt, include it.
+
+For each email worth surfacing, give me:
+- Who it's from
+- One sentence on what it's about
+- What (if anything) I need to do
+
+Skip obvious noise: marketing blasts, newsletters, automated notifications, 
+social media pings...
+
+Format each as a clean block, no markdown. If nothing stands out, say "Nothing worth your attention."
 """
         response = llm_with_structure.invoke(prompt)
         
-        return f"""
-## Summary
-Found {len(emails)} unread emails, {response.spam_count} were spam/promotions.
-## Important Emails
-{chr(10).join('- ' + e for e in response.important_emails)}
-## Action Items
-{chr(10).join('- ' + a for a in response.action_items)}
-"""
+        if not response.emails:
+            return f"Found {len(emails)} unread emails, nothing worth your attention."
+        
+        email_blocks = []
+        for e in response.emails:
+            block = f"[{e.urgency.upper()}] {e.sender} — {e.subject}\n  {e.summary}"
+            if e.action:
+                block += f"\n  Action: {e.action}"
+            email_blocks.append(block)
+        
+        return f"Found {len(emails)} unread emails, {response.spam_count} skipped as noise.\n\n" + "\n\n".join(email_blocks)
     except Exception as e:
         logger.error(f"Error in retrieve_unread_emails tool: {e}", exc_info=True)
         return f"Error getting emails: {str(e)}" 
