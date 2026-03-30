@@ -5,8 +5,7 @@ from src.core.config import Config
 logger = logging.getLogger(__name__)
 
 
-def _build_llm() -> BaseChatModel:
-    provider = Config.LLM_PROVIDER
+def _build_llm(provider: str) -> BaseChatModel:
     logger.info(f"Initializing LLM with provider: {provider}")
 
     if provider == "anthropic":
@@ -52,8 +51,21 @@ def _build_llm() -> BaseChatModel:
 
 class LLMService:
     def __init__(self):
-        self.llm = _build_llm()
-        logger.info("LLMService initialized successfully")
+        provider = Config.LLM_PROVIDER
+        fallback = Config.LLM_FALLBACK_PROVIDER
+        try:
+            self.llm = _build_llm(provider)
+            logger.info(f"LLMService initialized with provider: {provider}")
+        except Exception as e:
+            if fallback and fallback != provider:
+                logger.warning(
+                    f"Primary LLM provider '{provider}' failed ({e}), "
+                    f"falling back to '{fallback}'"
+                )
+                self.llm = _build_llm(fallback)
+                logger.info(f"LLMService initialized with fallback provider: {fallback}")
+            else:
+                raise
 
     def get_llm(self) -> BaseChatModel:
         return self.llm

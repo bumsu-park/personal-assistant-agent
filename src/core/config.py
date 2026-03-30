@@ -9,6 +9,8 @@ load_dotenv(project_root / f'.env.{environment}')
 class Config:
     # LLM Provider — one of: anthropic, openai, deepseek, qwen
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic")
+    # Fallback provider if primary is unavailable (optional)
+    LLM_FALLBACK_PROVIDER = os.getenv("LLM_FALLBACK_PROVIDER", "")
 
     # Anthropic (Claude)
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
