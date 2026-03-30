@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 import logging
-from typing import Callable
-from src.core.state import AgentState
-from src.core.config import Config
+from typing import Callable, TYPE_CHECKING
+
 from langchain_core.messages import SystemMessage, ToolMessage
+
+from src.core.state import AgentState
+
+if TYPE_CHECKING:
+    from src.core.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +17,7 @@ def create_nodes(
     tools: list,
     llm,
     system_prompt_builder: Callable[[], str],
+    config: Config,
 ):
     """Returns (agent_node, tool_node) closures bound to the given tools/llm."""
     tools_map = {t.name: t for t in tools}
@@ -26,7 +33,7 @@ def create_nodes(
         else:
             history.insert(0, system_msg)
 
-        max_msgs = Config.MAX_MESSAGES
+        max_msgs = config.MAX_MESSAGES
         if len(history) > max_msgs:
             history = [history[0]] + history[-(max_msgs - 1) :]
 

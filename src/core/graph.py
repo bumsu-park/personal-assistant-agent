@@ -1,19 +1,25 @@
+from __future__ import annotations
+
 import logging
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from typing import Callable, Optional
+from typing import Callable, Optional, TYPE_CHECKING
+
 from langgraph.graph import StateGraph, END
+
 from src.core.state import AgentState
 from src.core.nodes import create_nodes
-from src.core.llm import get_llm_service
+from src.core.llm import create_llm
 from src.core.memory import get_checkpointer
 from src.core.plugin import Plugin
+
+if TYPE_CHECKING:
+    from src.core.config import Config
 
 logger = logging.getLogger(__name__)
 
 
 async def create_agent(
     plugins: list[Plugin],
+    config: Config,
     system_prompt_builder: Optional[Callable[[], str]] = None,
     checkpointer=None,
 ):
@@ -26,15 +32,12 @@ async def create_agent(
         all_tools.extend(p.tools())
 
     if system_prompt_builder is None:
+        system_prompt_builder = config.build_system_prompt
 
-        def system_prompt_builder():
-            now = datetime.now(ZoneInfo("America/New_York")).strftime(
-                "%A, %Y-%m-%d %H:%M:%S"
-            )
-            return f"You are a helpful assistant named Wendy. Current date and time: {now} EST/EDT"
-
-    llm = get_llm_service().get_llm()
-    agent_node, tool_node = create_nodes(all_tools, llm, system_prompt_builder)
+    llm = create_llm(config)
+    agent_node, tool_node = create_nodes(
+        all_tools, llm, system_prompt_builder, config
+    )
 
     def should_continue(state: AgentState) -> str:
         return state["next_action"]
@@ -49,8 +52,8 @@ async def create_agent(
     graph.add_edge("tools", "agent")
 
     if checkpointer is None:
-        checkpointer = await get_checkpointer()
+        checkpointer = await get_checkpointer(config)
 
     compiled = graph.compile(checkpointer=checkpointer)
-    logger.info("Agent graph created successfully.")
+    logger.info("Agent graph created for %s.", config.agent_name)
     return compiled

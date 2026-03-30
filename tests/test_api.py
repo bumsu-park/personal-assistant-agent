@@ -1,8 +1,9 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
+
 from src.core.api import create_app
-from src.core.config import Config
 
 
 @pytest.fixture
@@ -16,10 +17,9 @@ def mock_graph():
 
 @pytest.fixture
 def client(mock_graph):
-    async def graph_factory():
-        return mock_graph
-
-    app = create_app(graph_factory, title="Test API")
+    registry = MagicMock()
+    registry.get.return_value = mock_graph
+    app = create_app(registry, api_key="test-key", title="Test API")
     return TestClient(app), mock_graph
 
 
@@ -39,32 +39,31 @@ class TestChatEndpoint:
 
     def test_wrong_api_key_returns_401(self, client):
         test_client, _ = client
-        with patch.object(Config, "API_KEY", "correct-key"):
-            response = test_client.post(
-                "/api/chat",
-                json={"message": "hello"},
-                headers={"x-api-key": "wrong-key"},
-            )
+        response = test_client.post(
+            "/api/chat",
+            json={"message": "hello"},
+            headers={"x-api-key": "wrong-key"},
+        )
         assert response.status_code == 401
 
     def test_valid_request_returns_response(self, client):
         test_client, mock_graph = client
-        with patch.object(Config, "API_KEY", "test-key"):
-            response = test_client.post(
-                "/api/chat",
-                json={"message": "hello", "user_id": "user1"},
-                headers={"x-api-key": "test-key"},
-            )
+        response = test_client.post(
+            "/api/chat",
+            json={"message": "hello", "user_id": "user1"},
+            headers={"x-api-key": "test-key"},
+        )
         assert response.status_code == 200
         assert response.json()["response"] == "Hello, how can I help?"
 
     def test_graph_called_with_correct_thread_id(self, client):
         test_client, mock_graph = client
-        with patch.object(Config, "API_KEY", "test-key"):
-            test_client.post(
-                "/api/chat",
-                json={"message": "hello", "user_id": "alice"},
-                headers={"x-api-key": "test-key"},
-            )
+        test_client.post(
+            "/api/chat",
+            json={"message": "hello", "user_id": "alice"},
+            headers={"x-api-key": "test-key"},
+        )
         call_config = mock_graph.ainvoke.call_args.kwargs["config"]
-        assert "alice" in call_config["configurable"]["thread_id"]
+        tid = call_config["configurable"]["thread_id"]
+        assert "alice" in tid
+        assert "personal" in tid

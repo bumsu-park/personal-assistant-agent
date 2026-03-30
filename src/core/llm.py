@@ -1,36 +1,47 @@
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
+
 from langchain_core.language_models.chat_models import BaseChatModel
-from src.core.config import Config
+
+if TYPE_CHECKING:
+    from src.core.config import Config
 
 logger = logging.getLogger(__name__)
 
 
-def _build_llm(provider: str) -> BaseChatModel:
-    logger.info(f"Initializing LLM with provider: {provider}")
+def _build_llm(provider: str, config: Config) -> BaseChatModel:
+    logger.info(
+        "Initializing LLM with provider: %s (agent=%s)", provider, config.agent_name
+    )
 
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
+
         return ChatAnthropic(
-            api_key=Config.ANTHROPIC_API_KEY,
-            model=Config.ANTHROPIC_MODEL,
+            api_key=config.ANTHROPIC_API_KEY,
+            model=config.ANTHROPIC_MODEL,
             temperature=0.5,
             streaming=True,
         )
 
     if provider == "openai":
         from langchain_openai import ChatOpenAI
+
         return ChatOpenAI(
-            api_key=Config.OPENAI_API_KEY,
-            model=Config.OPENAI_MODEL,
+            api_key=config.OPENAI_API_KEY,
+            model=config.OPENAI_MODEL,
             temperature=0.5,
             streaming=True,
         )
 
     if provider == "deepseek":
         from langchain_openai import ChatOpenAI
+
         return ChatOpenAI(
-            api_key=Config.DEEPSEEK_API_KEY,
-            model=Config.DEEPSEEK_MODEL,
+            api_key=config.DEEPSEEK_API_KEY,
+            model=config.DEEPSEEK_MODEL,
             base_url="https://api.deepseek.com/v1",
             temperature=0.5,
             streaming=True,
@@ -38,9 +49,10 @@ def _build_llm(provider: str) -> BaseChatModel:
 
     if provider == "qwen":
         from langchain_openai import ChatOpenAI
+
         return ChatOpenAI(
-            api_key=Config.QWEN_API_KEY,
-            model=Config.QWEN_MODEL,
+            api_key=config.QWEN_API_KEY,
+            model=config.QWEN_MODEL,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
             temperature=0.5,
             streaming=True,
@@ -49,33 +61,18 @@ def _build_llm(provider: str) -> BaseChatModel:
     raise ValueError(f"Unknown LLM_PROVIDER: {provider}")
 
 
-class LLMService:
-    def __init__(self):
-        provider = Config.LLM_PROVIDER
-        fallback = Config.LLM_FALLBACK_PROVIDER
-        try:
-            self.llm = _build_llm(provider)
-            logger.info(f"LLMService initialized with provider: {provider}")
-        except Exception as e:
-            if fallback and fallback != provider:
-                logger.warning(
-                    f"Primary LLM provider '{provider}' failed ({e}), "
-                    f"falling back to '{fallback}'"
-                )
-                self.llm = _build_llm(fallback)
-                logger.info(f"LLMService initialized with fallback provider: {fallback}")
-            else:
-                raise
-
-    def get_llm(self) -> BaseChatModel:
-        return self.llm
-
-
-_llm_service = None
-
-
-def get_llm_service() -> LLMService:
-    global _llm_service
-    if _llm_service is None:
-        _llm_service = LLMService()
-    return _llm_service
+def create_llm(config: Config) -> BaseChatModel:
+    provider = config.LLM_PROVIDER
+    fallback = config.LLM_FALLBACK_PROVIDER
+    try:
+        return _build_llm(provider, config)
+    except Exception as e:
+        if fallback and fallback != provider:
+            logger.warning(
+                "Primary LLM provider '%s' failed (%s), falling back to '%s'",
+                provider,
+                e,
+                fallback,
+            )
+            return _build_llm(fallback, config)
+        raise
