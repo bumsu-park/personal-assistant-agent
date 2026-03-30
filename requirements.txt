@@ -4,9 +4,10 @@ langchain>=0.3.0
 langchain-core>=0.3.0
 langgraph-checkpoint-sqlite>=1.0.0
 
-# LLM Provider - OpenAI
+# LLM Providers
 openai>=1.0.0
 langchain-openai>=0.0.2
+langchain-anthropic>=0.3.0
 
 # Telegram Bot (DEPRECATED — will be removed in a future release)
 python-telegram-bot>=21.0
