@@ -30,6 +30,12 @@ class Config:
     AMAZON_PASSWORD = os.getenv("AMAZON_PASSWORD")
     AMAZON_URL = os.getenv("AMAZON_URL", "amazon.com")
     AMAZON_OTP = os.getenv("AMAZON_OTP", "")
+
+    # Google Cloud Pub/Sub (Gmail push notifications — work agent)
+    GOOGLE_PUBSUB_PROJECT_ID = os.getenv("GOOGLE_PUBSUB_PROJECT_ID", "")
+    GOOGLE_PUBSUB_TOPIC_NAME = os.getenv("GOOGLE_PUBSUB_TOPIC_NAME", "gmail-push")
+    GMAIL_PUBSUB_VERIFICATION_TOKEN = os.getenv("GMAIL_PUBSUB_VERIFICATION_TOKEN", "")
+    WORK_EMAIL_POLL_FALLBACK_MINUTES = int(os.getenv("WORK_EMAIL_POLL_FALLBACK_MINUTES", "15"))
     
     
     # Paths 

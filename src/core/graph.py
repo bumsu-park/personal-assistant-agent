@@ -25,13 +25,23 @@ async def create_agent(
     for p in plugins:
         all_tools.extend(p.tools())
 
-    if system_prompt_builder is None:
+    # Collect static system prompt fragments from plugins (e.g. InstructionsPlugin)
+    plugin_prompts = [p.system_prompt() for p in plugins if p.system_prompt()]
 
-        def system_prompt_builder():
+    raw_builder = system_prompt_builder
+
+    if raw_builder is None:
+        def raw_builder():
             now = datetime.now(ZoneInfo("America/New_York")).strftime(
                 "%A, %Y-%m-%d %H:%M:%S"
             )
             return f"You are a helpful assistant named Wendy. Current date and time: {now} EST/EDT"
+
+    def system_prompt_builder():
+        base = raw_builder()
+        if plugin_prompts:
+            return base + "\n\n" + "\n\n".join(plugin_prompts)
+        return base
 
     llm = get_llm_service().get_llm()
     agent_node, tool_node = create_nodes(all_tools, llm, system_prompt_builder)
