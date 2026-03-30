@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 import logging
 from datetime import datetime
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
-from typing import Callable, Awaitable
+
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
-from src.core.config import Config
+
+if TYPE_CHECKING:
+    from src.core.registry import AgentRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +18,7 @@ logger = logging.getLogger(__name__)
 class ChatRequest(BaseModel):
     message: str
     user_id: str = "default_user"
+    agent: str = "personal"
 
 
 class ChatResponse(BaseModel):
@@ -20,33 +26,38 @@ class ChatResponse(BaseModel):
 
 
 def create_app(
-    graph_factory: Callable[[], Awaitable],
+    registry: AgentRegistry,
+    api_key: str,
     title: str = "Agent API",
 ) -> FastAPI:
     app = FastAPI(title=title)
-    _graph = None
-
-    async def get_graph():
-        nonlocal _graph
-        if _graph is None:
-            _graph = await graph_factory()
-        return _graph
 
     @app.post("/api/chat", response_model=ChatResponse)
     async def chat(request: ChatRequest, x_api_key: str = Header(...)):
-        if x_api_key != Config.API_KEY:
+        if x_api_key != api_key:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
-        logger.info(f"API chat request from user_id={request.user_id}")
+        try:
+            graph = registry.get(request.agent)
+        except KeyError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unknown agent: {request.agent}",
+            )
 
-        graph = await get_graph()
+        logger.info(
+            f"API chat request: agent={request.agent} user_id={request.user_id}"
+        )
+
         today = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+        thread_id = f"{request.agent}_{request.user_id}_{today}"
+
         result = await graph.ainvoke(
             {
                 "user_id": request.user_id,
                 "messages": [HumanMessage(content=request.message)],
             },
-            config={"configurable": {"thread_id": f"{request.user_id}_{today}"}},
+            config={"configurable": {"thread_id": thread_id}},
         )
         return ChatResponse(response=result["messages"][-1].content)
 
