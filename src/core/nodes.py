@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from langchain_core.messages import SystemMessage, ToolMessage
 
@@ -35,7 +36,7 @@ def create_nodes(
 
         max_msgs = config.MAX_MESSAGES
         if len(history) > max_msgs:
-            history = [history[0]] + history[-(max_msgs - 1) :]
+            history = [history[0], *history[-(max_msgs - 1):]]
 
         response = await llm_with_tools.ainvoke(history)
 
@@ -82,7 +83,7 @@ def create_nodes(
                     )
                     tool_messages.append(
                         ToolMessage(
-                            content=f"Error: {str(e)}", tool_call_id=tool_id
+                            content=f"Error: {e!s}", tool_call_id=tool_id
                         )
                     )
             else:

@@ -1,5 +1,6 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
 
 
 class Email(BaseModel):
@@ -8,7 +9,7 @@ class Email(BaseModel):
     sender: str = Field(description="Sender's email address and name")
     date: str = Field(description="Date and time the email was sent")
     snippet: str = Field(description="Short preview of the email body")
-    body: Optional[str] = Field(default=None, description="Full email body content")
+    body: str | None = Field(default=None, description="Full email body content")
 
 
 class EmailSummary(BaseModel):
@@ -23,7 +24,7 @@ class EmailSummary(BaseModel):
     urgency: Literal["high", "medium", "low"] = Field(
         description="high = needs attention today, medium = this week, low = whenever"
     )
-    action: Optional[str] = Field(
+    action: str | None = Field(
         default=None, description="What the user needs to do, if anything"
     )
 

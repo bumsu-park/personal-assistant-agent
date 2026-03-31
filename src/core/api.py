@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from src.core.registry import AgentRegistry
@@ -39,11 +39,11 @@ def create_app(
 
         try:
             graph = registry.get(request.agent)
-        except KeyError:
+        except KeyError as err:
             raise HTTPException(
                 status_code=404,
                 detail=f"Unknown agent: {request.agent}",
-            )
+            ) from err
 
         logger.info(
             f"API chat request: agent={request.agent} user_id={request.user_id}"

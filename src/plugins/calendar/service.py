@@ -1,12 +1,14 @@
 import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
-from caldav import DAVClient
-from langchain_core.tools import tool
-from icalendar import Calendar as iCalendar, Event as IEvent
-import pytz
-import dateparser
+from typing import Any
 from zoneinfo import ZoneInfo
+
+import dateparser
+import pytz
+from caldav import DAVClient
+from icalendar import Calendar as iCalendar
+from icalendar import Event as IEvent
+from langchain_core.tools import tool
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +53,11 @@ class CalendarService:
         summary: str,
         start_time: datetime,
         end_time: datetime,
-        description: Optional[str] = None,
-        location: Optional[str] = None,
+        description: str | None = None,
+        location: str | None = None,
         timezone: str = "America/New_York",
         reminder_minutes: int = 30,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         try:
             cal = iCalendar()
             cal.add("prodid", "-//Personal Assistant Agent//EN")
@@ -115,9 +117,9 @@ class CalendarService:
     def list_events(
         self,
         max_results: int = 10,
-        time_min: Optional[datetime] = None,
-        time_max: Optional[datetime] = None,
-    ) -> List[Dict[str, Any]]:
+        time_min: datetime | None = None,
+        time_max: datetime | None = None,
+    ) -> list[dict[str, Any]]:
         try:
             if time_min is None:
                 time_min = datetime.now()
@@ -162,8 +164,8 @@ class CalendarService:
         self,
         query: str,
         max_results: int = 10,
-        time_min: Optional[datetime] = None,
-    ) -> List[Dict[str, Any]]:
+        time_min: datetime | None = None,
+    ) -> list[dict[str, Any]]:
         try:
             if time_min is None:
                 time_min = datetime.now()
@@ -300,7 +302,7 @@ def _make_tools(get_service: callable) -> list:
             )
             return f"Event '{summary}' created in iCloud calendar"
         except Exception as e:
-            return f"Error creating event: {str(e)}"
+            return f"Error creating event: {e!s}"
 
     @tool
     def list_calendar_events(max_results: int = 10) -> str:
@@ -392,7 +394,7 @@ def _make_tools(get_service: callable) -> list:
             calendar.delete_event(event_id=event_id)
             return "Event deleted from iCloud calendar."
         except Exception as e:
-            return f"Error deleting event: {str(e)}"
+            return f"Error deleting event: {e!s}"
 
     return [
         create_calendar_event,

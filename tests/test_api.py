@@ -47,7 +47,7 @@ class TestChatEndpoint:
         assert response.status_code == 401
 
     def test_valid_request_returns_response(self, client):
-        test_client, mock_graph = client
+        test_client, _mock_graph = client
         response = test_client.post(
             "/api/chat",
             json={"message": "hello", "user_id": "user1"},

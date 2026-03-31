@@ -1,14 +1,16 @@
 import logging
 from pathlib import Path
+
 from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from langchain_core.tools import tool
+
 from src.core.config import Config
 from src.core.llm import get_llm_service
-from src.plugins.gmail.utils import parse_email
 from src.plugins.gmail.models import EmailSummaryOutput
+from src.plugins.gmail.utils import parse_email
 
 logger = logging.getLogger(__name__)
 SCOPES = [
@@ -169,6 +171,6 @@ Format each as a clean block, no markdown. If nothing stands out, say "Nothing w
             )
         except Exception as e:
             logger.error(f"Error in retrieve_unread_emails tool: {e}", exc_info=True)
-            return f"Error getting emails: {str(e)}"
+            return f"Error getting emails: {e!s}"
 
     return [retrieve_and_summarize_unread_emails]
