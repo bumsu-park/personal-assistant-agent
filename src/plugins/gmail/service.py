@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from langchain_core.tools import tool
 
-from src.core.config import Config
-from src.core.llm import get_llm_service
-from src.plugins.gmail.models import EmailSummaryOutput
+from src.core.llm import create_llm
 from src.plugins.gmail.utils import parse_email
+from src.plugins.gmail.models import EmailSummaryOutput
+
+if TYPE_CHECKING:
+    from src.core.config import Config
 
 logger = logging.getLogger(__name__)
 SCOPES = [
@@ -21,11 +26,12 @@ SCOPES = [
 
 
 class GmailService:
-    def __init__(self, credentials_path: str | None = None):
+    def __init__(self, config: Config, credentials_path: str | None = None):
         self.creds = None
         self.service = None
-        self._credentials_path = credentials_path or Config.GMAIL_CREDENTIALS_PATH
-        self.token_path = Path(Config.DATA_DIR) / "gmail_token.json"
+        self._config = config
+        self._credentials_path = credentials_path or config.GMAIL_CREDENTIALS_PATH
+        self.token_path = Path(config.DATA_DIR) / "gmail_token.json"
         self._authenticate()
 
     def _authenticate(self):
@@ -91,8 +97,9 @@ class GmailService:
         ).execute()
 
 
-def _make_tools(get_service: callable) -> list:
-    """Build @tool functions closed over a service getter."""
+def _make_tools(get_service: callable, config: Config) -> list:
+    """Build @tool functions closed over a service getter and agent config."""
+    llm = create_llm(config)
 
     @tool
     def retrieve_and_summarize_unread_emails(
@@ -119,9 +126,6 @@ def _make_tools(get_service: callable) -> list:
 
         try:
             gmail_service = get_service()
-            llm_service = get_llm_service()
-
-            llm = llm_service.get_llm()
             llm_with_structure = llm.with_structured_output(EmailSummaryOutput)
 
             emails = gmail_service.query_emails(
@@ -171,6 +175,6 @@ Format each as a clean block, no markdown. If nothing stands out, say "Nothing w
             )
         except Exception as e:
             logger.error(f"Error in retrieve_unread_emails tool: {e}", exc_info=True)
-            return f"Error getting emails: {e!s}"
+            return f"Error getting emails: {str(e)}"
 
     return [retrieve_and_summarize_unread_emails]

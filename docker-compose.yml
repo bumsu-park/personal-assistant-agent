@@ -1,31 +1,56 @@
+x-agent-base: &agent-base
+  image: bspark2318/task-agent:arm64
+  build: .
+  restart: unless-stopped
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
-  task-agent:
-    image: bspark2318/task-agent:arm64
-    build: .
-    container_name: task-agent-${ENVIRONMENT:-dev}
-    restart: unless-stopped
+  # ── Personal agent ──────────────────────────────────────────────
+  task-agent-personal:
+    <<: *agent-base
+    container_name: task-agent-personal
     ports:
-      - "${FASTAPI_PORT:-8000}:${FASTAPI_PORT:-8000}"
+      - "${PERSONAL_PORT:-8001}:${PERSONAL_PORT:-8001}"
     volumes:
-      - ./data/${ENVIRONMENT}:/app/data/${ENVIRONMENT}
+      - ./data/personal:/app/data/personal
       - ./credentials/gmail_credentials.json:/app/credentials/gmail_credentials.json:ro
     env_file:
-      - .env.${ENVIRONMENT:-dev}
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - .env.prod.personal
 
-  cloudflared:
+  cloudflared-personal:
     image: cloudflare/cloudflared:latest
-    container_name: cloudflared-${ENVIRONMENT:-dev}
+    container_name: cloudflared-personal
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     env_file:
-      - .env.${ENVIRONMENT:-dev}
+      - .env.prod.personal
     depends_on:
-      - task-agent
+      - task-agent-personal
+
+  # ── Business agent ──────────────────────────────────────────────
+  task-agent-business:
+    <<: *agent-base
+    container_name: task-agent-business
+    ports:
+      - "${BUSINESS_PORT:-8002}:${BUSINESS_PORT:-8002}"
+    volumes:
+      - ./data/business:/app/data/business
+    env_file:
+      - .env.prod.business
+
+  cloudflared-business:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-business
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    env_file:
+      - .env.prod.business
+    depends_on:
+      - task-agent-business
 
   watchtower:
     image: containrrr/watchtower:latest
@@ -33,6 +58,6 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 300 --cleanup task-agent-${ENVIRONMENT:-dev}
+    command: --interval 300 --cleanup task-agent-personal task-agent-business
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
