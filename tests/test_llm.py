@@ -101,6 +101,5 @@ class TestCreateLlmFallback:
         cfg = _config(LLM_PROVIDER="anthropic", LLM_FALLBACK_PROVIDER="")
         with patch(
             "src.core.llm._build_llm", side_effect=RuntimeError("fail")
-        ):
-            with pytest.raises(RuntimeError, match="fail"):
-                create_llm(cfg)
+        ), pytest.raises(RuntimeError, match="fail"):
+            create_llm(cfg)

@@ -1,15 +1,15 @@
 import asyncio
-import importlib
 import logging
 import os
 
 import uvicorn
 
+import src.plugins  # noqa: F401 — triggers plugin registration
 from src.core.api import create_app
+from src.core.config import Config
 from src.core.memory import purge_old_checkpoints, close_all_checkpointers
+from src.core.plugin import PLUGIN_REGISTRY
 from src.core.registry import AgentRegistry
-
-AGENT_MODULES = os.getenv("AGENTS", "personal").split(",")
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -42,18 +42,36 @@ async def run_periodic_checkpoint_purge(registry: AgentRegistry):
 
 async def main():
     try:
+        agent_name = os.getenv("AGENT_NAME", "personal")
+        env_file = os.getenv("ENV_FILE")
+        plugin_names = [
+            p.strip()
+            for p in os.getenv("PLUGINS", "calendar,gmail").split(",")
+            if p.strip()
+        ]
+
+        config = Config(agent_name, env_file=env_file)
+
+        plugins = []
+        for name in plugin_names:
+            if name not in PLUGIN_REGISTRY:
+                raise ValueError(
+                    f"Unknown plugin '{name}'. "
+                    f"Available: {', '.join(PLUGIN_REGISTRY)}"
+                )
+            plugins.append(PLUGIN_REGISTRY[name].from_config(config))
+
+        logger.info(
+            "Agent=%s plugins=%s provider=%s",
+            agent_name,
+            plugin_names,
+            config.LLM_PROVIDER,
+        )
+
         registry = AgentRegistry()
+        await registry.register(agent_name, config, plugins)
 
-        for module_name in AGENT_MODULES:
-            module_name = module_name.strip()
-            logger.info(f"Loading agent module: {module_name}")
-            agent_module = importlib.import_module(f"src.agents.{module_name}.main")
-            await agent_module.register(registry)
-
-        logger.info(f"Registered agents: {registry.agent_names}")
-
-        first_config = next(iter(registry.configs.values()))
-        api_key = os.getenv("API_KEY", first_config.API_KEY)
+        api_key = os.getenv("API_KEY", config.API_KEY)
         app = create_app(registry, api_key=api_key)
 
         host = os.getenv("FASTAPI_HOST", "0.0.0.0")

@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
 from dotenv import load_dotenv
 
 project_root = Path(__file__).parent.parent.parent
@@ -85,6 +86,9 @@ class Config:
         self.FASTAPI_HOST = os.getenv("FASTAPI_HOST", "0.0.0.0")
         self.FASTAPI_PORT = int(os.getenv("FASTAPI_PORT", "8000"))
         self.API_KEY = os.getenv("API_KEY", "")
+
+        # Plugins (comma-separated list of plugin names to load)
+        self.PLUGINS = os.getenv("PLUGINS", "calendar,gmail")
 
         # System prompt
         self.SYSTEM_PROMPT_TEMPLATE = os.getenv(

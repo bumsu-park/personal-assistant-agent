@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 
-from src.core.state import AgentState
-from src.core.nodes import create_nodes
 from src.core.llm import create_llm
 from src.core.memory import get_checkpointer
+from src.core.nodes import create_nodes
 from src.core.plugin import Plugin
+from src.core.state import AgentState
 
 if TYPE_CHECKING:
     from src.core.config import Config
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 async def create_agent(
     plugins: list[Plugin],
     config: Config,
-    system_prompt_builder: Optional[Callable[[], str]] = None,
+    system_prompt_builder: Callable[[], str] | None = None,
     checkpointer=None,
 ):
     """Build and compile a LangGraph agent from the given plugins."""

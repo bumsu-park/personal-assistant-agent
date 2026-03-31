@@ -1,4 +1,5 @@
 import logging
+
 from src.core.config import Config
 from src.core.graph import create_agent
 from src.core.plugin import Plugin
