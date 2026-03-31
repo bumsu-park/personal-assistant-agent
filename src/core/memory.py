@@ -61,6 +61,13 @@ async def purge_old_checkpoints(config: Config):
     try:
         async with aiosqlite.connect(str(checkpoint_path)) as db:
             for table in ("checkpoints", "writes"):
+                exists = await db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (table,),
+                )
+                if not await exists.fetchone():
+                    logger.info(f"Table '{table}' does not exist yet, skipping purge.")
+                    continue
                 result = await db.execute(
                     f"DELETE FROM {table} WHERE substr(thread_id, -10) < ?",
                     (cutoff_date,),
