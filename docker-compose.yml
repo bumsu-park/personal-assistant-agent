@@ -6,14 +6,14 @@ services:
     restart: unless-stopped
     ports:
       - "${FASTAPI_PORT:-8000}:${FASTAPI_PORT:-8000}"
-    volumes: 
+    volumes:
       - ./data/${ENVIRONMENT}:/app/data/${ENVIRONMENT}
-      - ./gmail_credentials.json:/app/gmail_credentials.json:ro
+      - ./credentials/gmail_credentials.json:/app/credentials/gmail_credentials.json:ro
     env_file:
       - .env.${ENVIRONMENT:-dev}
     logging:
       driver: "json-file"
-      options: 
+      options:
         max-size: "10m"
         max-file: "3"
 
@@ -22,8 +22,17 @@ services:
     container_name: cloudflared-${ENVIRONMENT:-dev}
     restart: unless-stopped
     command: tunnel --no-autoupdate run
-    # Same file as task-agent — cloudflared reads TUNNEL_TOKEN (Cloudflare’s name).
     env_file:
       - .env.${ENVIRONMENT:-dev}
     depends_on:
       - task-agent
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup task-agent-${ENVIRONMENT:-dev}
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
