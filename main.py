@@ -74,8 +74,8 @@ async def main():
         api_key = os.getenv("API_KEY", config.API_KEY)
         app = create_app(registry, api_key=api_key)
 
-        host = os.getenv("FASTAPI_HOST", "0.0.0.0")
-        port = int(os.getenv("FASTAPI_PORT", "8000"))
+        host = config.FASTAPI_HOST
+        port = config.FASTAPI_PORT
 
         server = uvicorn.Server(
             uvicorn.Config(app, host=host, port=port, log_level="info")
