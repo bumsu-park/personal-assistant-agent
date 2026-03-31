@@ -8,7 +8,7 @@ services:
       - "${FASTAPI_PORT:-8000}:${FASTAPI_PORT:-8000}"
     volumes:
       - ./data/${ENVIRONMENT}:/app/data/${ENVIRONMENT}
-      - ./gmail_credentials.json:/app/gmail_credentials.json:ro
+      - ./credentials/gmail_credentials.json:/app/credentials/gmail_credentials.json:ro
     env_file:
       - .env.${ENVIRONMENT:-dev}
     logging:

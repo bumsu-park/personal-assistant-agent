@@ -53,9 +53,11 @@ vector_store/
 *.session
 
 # Environment-specific files
-.env.dev
-.env.prod
+.env.dev*
+.env.prod*
 data/dev/
 data/prod/
 
-gmail_credentials.json
+# OAuth client secrets (keep folder; ignore JSON)
+credentials/*
+!credentials/.gitkeep
