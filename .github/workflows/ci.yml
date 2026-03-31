@@ -1,0 +1,90 @@
+name: CI Pipeline
+
+# Push: add glob patterns here if you want CI on more branches (e.g. "feat/**").
+on:
+  push:
+    branches: [main, "claude/**"]
+  # Omit `branches:` so PRs into any base (main, develop, etc.) run CI.
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install ruff
+      - name: Lint
+        run: ruff check src/ tests/
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Test
+        env:
+          ENVIRONMENT: test
+          LLM_PROVIDER: anthropic
+          ANTHROPIC_API_KEY: dummy-key-for-tests
+          OPENAI_API_KEY: dummy-key-for-tests
+        run: pytest --tb=short -q
+
+  review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check plan exists
+        run: |
+          BRANCH="${GITHUB_HEAD_REF}"
+          SLUG=$(echo "$BRANCH" | sed 's|/|-|g')
+          if [ ! -f ".claude/plans/${SLUG}.md" ]; then
+            echo "::warning::No plan file found at .claude/plans/${SLUG}.md — consider adding one."
+          fi
+      - name: Diff summary
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          echo "## Files changed (vs ${{ github.base_ref }})" >> $GITHUB_STEP_SUMMARY
+          git diff --stat "${BASE_SHA}...${HEAD_SHA}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Diff" >> $GITHUB_STEP_SUMMARY
+          echo '```diff' >> $GITHUB_STEP_SUMMARY
+          git diff "${BASE_SHA}...${HEAD_SHA}" -- '*.py' | head -500 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: bspark2318/task-agent:arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
