@@ -71,7 +71,7 @@ async def main():
         registry = AgentRegistry()
         await registry.register(agent_name, config, plugins)
 
-        api_key = os.getenv("API_KEY", config.API_KEY)
+        api_key = os.getenv("FASTAPI_KEY", config.FASTAPI_KEY)
         app = create_app(registry, api_key=api_key)
 
         host = config.FASTAPI_HOST

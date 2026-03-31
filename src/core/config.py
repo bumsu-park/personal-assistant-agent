@@ -45,10 +45,15 @@ class Config:
         ).split(",")
 
         # Google Calendar Credentials
+        creds_dir = project_root / "credentials" / agent_name
         self.GOOGLE_CALENDAR_CREDENTIALS_PATH = os.getenv(
-            "GOOGLE_CALENDAR_CREDENTIALS_PATH", ""
+            "GOOGLE_CALENDAR_CREDENTIALS_PATH",
+            str(creds_dir / "google_calendar_credentials.json"),
         )
-        self.GMAIL_CREDENTIALS_PATH = os.getenv("GMAIL_CREDENTIALS_PATH", "")
+        self.GMAIL_CREDENTIALS_PATH = os.getenv(
+            "GMAIL_CREDENTIALS_PATH",
+            str(creds_dir / "gmail_credentials.json"),
+        )
 
         # CalDAV Credentials
         self.GOOGLE_CALENDAR_EMAIL = os.getenv("GOOGLE_CALENDAR_EMAIL", "")
@@ -85,7 +90,7 @@ class Config:
         # FastAPI
         self.FASTAPI_HOST = os.getenv("FASTAPI_HOST", "0.0.0.0")
         self.FASTAPI_PORT = int(os.getenv("FASTAPI_PORT", "8000"))
-        self.API_KEY = os.getenv("API_KEY", "")
+        self.FASTAPI_KEY = os.getenv("FASTAPI_KEY", "")
 
         # Plugins (comma-separated list of plugin names to load)
         self.PLUGINS = os.getenv("PLUGINS", "calendar,gmail")
