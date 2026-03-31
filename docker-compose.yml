@@ -20,7 +20,6 @@ services:
       - ./credentials/gmail_credentials.json:/app/credentials/gmail_credentials.json:ro
     env_file:
       - .env.prod.personal
-
   cloudflared-personal:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared-personal

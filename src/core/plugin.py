@@ -32,12 +32,12 @@ class Plugin(ABC):
     @abstractmethod
     def tools(self) -> list: ...
 
-    def system_prompt(self) -> str | None:
+    def system_prompt(self) -> Optional[str]:
         """Optional extra system prompt fragment contributed by this plugin."""
         return None
 
-    async def setup(self) -> None:  # noqa: B027
+    async def setup(self) -> None:
         """Called once before the agent starts. Override for auth, connections, etc."""
 
-    async def teardown(self) -> None:  # noqa: B027
+    async def teardown(self) -> None:
         """Called on shutdown. Override for cleanup."""
