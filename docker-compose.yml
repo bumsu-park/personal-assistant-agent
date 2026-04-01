@@ -17,7 +17,7 @@ services:
       - "${PERSONAL_PORT:-8001}:${PERSONAL_PORT:-8001}"
     volumes:
       - ./data/personal:/app/data/personal
-      - ./credentials/gmail_credentials.json:/app/credentials/gmail_credentials.json:ro
+      - ./credentials/personal/gmail_credentials.json:/app/credentials/personal/gmail_credentials.json:ro
     env_file:
       - .env.prod.personal
   cloudflared-personal:
@@ -38,6 +38,7 @@ services:
       - "${BUSINESS_PORT:-8002}:${BUSINESS_PORT:-8002}"
     volumes:
       - ./data/business:/app/data/business
+      - ./credentials/business/gmail_credentials.json:/app/credentials/business/gmail_credentials.json:ro
     env_file:
       - .env.prod.business
 

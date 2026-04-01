@@ -59,7 +59,12 @@ def create_app(
             },
             config={"configurable": {"thread_id": thread_id}},
         )
-        return ChatResponse(response=result["messages"][-1].content)
+        content = result["messages"][-1].content
+        if isinstance(content, list):
+            content = "".join(
+                block["text"] for block in content if block.get("type") == "text"
+            )
+        return ChatResponse(response=content)
 
     @app.get("/health")
     async def health():
