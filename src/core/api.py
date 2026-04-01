@@ -9,6 +9,8 @@ from fastapi import FastAPI, Header, HTTPException
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
+from src.core.commands import dispatch, get_session_thread_id
+
 if TYPE_CHECKING:
     from src.core.registry import AgentRegistry
 
@@ -50,7 +52,16 @@ def create_app(
         )
 
         today = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
-        thread_id = f"{request.agent}_{request.user_id}_{today}"
+        base_thread_id = f"{request.agent}_{request.user_id}_{today}"
+
+        agent_config = registry.configs.get(request.agent)
+        cmd_result = await dispatch(
+            request.message, thread_id=base_thread_id, config=agent_config
+        )
+        if cmd_result is not None:
+            return ChatResponse(response=cmd_result)
+
+        thread_id = get_session_thread_id(base_thread_id)
 
         result = await graph.ainvoke(
             {
