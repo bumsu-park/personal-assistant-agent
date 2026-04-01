@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent.parent
 
 DEFAULT_SYSTEM_PROMPT_TEMPLATE = (
-    "You are a helpful assistant. Current date and time: {datetime} EST/EDT"
+    "You are a helpful assistant. Be concise and to the point. Current date and time: {datetime} EST/EDT"
 )
 
 

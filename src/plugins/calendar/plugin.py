@@ -13,9 +13,10 @@ if TYPE_CHECKING:
 class CalendarPlugin(Plugin):
     name = "calendar"
 
-    def __init__(self, username: str, password: str):
+    def __init__(self, username: str, password: str, agent_name: str = "personal"):
         self._username = username
         self._password = password
+        self._agent_name = agent_name
         self._service: CalendarService | None = None
 
     @classmethod
@@ -23,11 +24,14 @@ class CalendarPlugin(Plugin):
         return cls(
             username=config.ICLOUD_EMAIL,
             password=config.ICLOUD_APP_PASSWORD,
+            agent_name=config.agent_name,
         )
 
     async def setup(self) -> None:
         self._service = CalendarService(
-            username=self._username, password=self._password
+            username=self._username,
+            password=self._password,
+            agent_name=self._agent_name,
         )
 
     def tools(self) -> list:

@@ -14,15 +14,17 @@ logger = logging.getLogger(__name__)
 
 
 class CalendarService:
-    def __init__(self, username: str, password: str):
+    def __init__(self, username: str, password: str, agent_name: str = "personal"):
         """
         Initialize CalDAV calendar service for iCloud only.
 
         Args:
             username: iCloud email/Apple ID
             password: App-specific password from appleid.apple.com
+            agent_name: Agent name used as iCal CATEGORIES tag (e.g. "business", "personal")
         """
         self.provider = "icloud"
+        self.agent_name = agent_name
         url = "https://caldav.icloud.com/"
 
         try:
@@ -82,6 +84,7 @@ class CalendarService:
                 event.add("description", description)
             if location:
                 event.add("location", location)
+            event.add("categories", [self.agent_name])
 
             if reminder_minutes > 0:
                 from icalendar import Alarm
@@ -133,6 +136,10 @@ class CalendarService:
 
             for event in events[:max_results]:
                 vev = event.vobject_instance.vevent
+                categories = None
+                if hasattr(vev, "categories"):
+                    cats = vev.categories.value
+                    categories = list(cats) if isinstance(cats, (list, tuple)) else [str(cats)]
                 results.append(
                     {
                         "summary": str(vev.summary.value),
@@ -148,6 +155,7 @@ class CalendarService:
                         "location": vev.location.value
                         if hasattr(vev, "location")
                         else None,
+                        "categories": categories,
                         "id": str(event.url),
                         "provider": self.provider,
                     }
@@ -188,6 +196,10 @@ class CalendarService:
                     query.lower() in summary.lower()
                     or query.lower() in description.lower()
                 ):
+                    categories = None
+                    if hasattr(vev, "categories"):
+                        cats = vev.categories.value
+                        categories = list(cats) if isinstance(cats, (list, tuple)) else [str(cats)]
                     results.append(
                         {
                             "summary": summary,
@@ -201,6 +213,7 @@ class CalendarService:
                             "location": vev.location.value
                             if hasattr(vev, "location")
                             else None,
+                            "categories": categories,
                             "id": str(event.url),
                             "provider": self.provider,
                         }
