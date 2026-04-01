@@ -19,6 +19,7 @@ def mock_graph():
 def client(mock_graph):
     registry = MagicMock()
     registry.get.return_value = mock_graph
+    registry.configs = {"personal": MagicMock()}
     app = create_app(registry, api_key="test-key", title="Test API")
     return TestClient(app), mock_graph
 

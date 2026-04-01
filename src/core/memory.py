@@ -47,6 +47,34 @@ async def close_all_checkpointers():
     _checkpointers.clear()
 
 
+async def delete_thread(config: Config, thread_id: str) -> None:
+    """Delete all checkpoint data for a specific thread_id."""
+    checkpoint_path = config.CHECKPOINTS_DIR / "checkpoints.db"
+    if not checkpoint_path.exists():
+        return
+
+    try:
+        async with aiosqlite.connect(str(checkpoint_path)) as db:
+            for table in ("checkpoints", "writes"):
+                exists = await db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (table,),
+                )
+                if not await exists.fetchone():
+                    continue
+                result = await db.execute(
+                    f"DELETE FROM {table} WHERE thread_id = ?",
+                    (thread_id,),
+                )
+                logger.info(
+                    f"Deleted {result.rowcount} rows from {table} "
+                    f"for thread {thread_id}"
+                )
+            await db.commit()
+    except Exception as e:
+        logger.error(f"Error deleting thread {thread_id}: {e}", exc_info=True)
+
+
 async def purge_old_checkpoints(config: Config):
     checkpoint_path = config.CHECKPOINTS_DIR / "checkpoints.db"
     if not checkpoint_path.exists():
