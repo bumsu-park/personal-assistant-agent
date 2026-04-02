@@ -1,0 +1,18 @@
+name: Auto-fix Failing CI
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  autofix:
+    uses: bumsu-park/ci/.github/workflows/autofix.yml@main
+    secrets: inherit
+    with:
+      ci-workflow-name: "CI"
+      setup-command: "pip install -r requirements-dev.txt"
+      fix-prompt: |
+        After fixing, verify with:
+        - ruff check src/ tests/
+        - pytest --tb=short -q
