@@ -92,6 +92,19 @@ class Config:
         self.FASTAPI_PORT = int(os.getenv("FASTAPI_PORT", "8000"))
         self.FASTAPI_KEY = os.getenv("FASTAPI_KEY", "")
 
+        # Market Research
+        self.TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
+        self.EXA_API_KEY = os.getenv("EXA_API_KEY", "")
+        self.MARKET_RESEARCH_SEARCH_PROVIDER = os.getenv(
+            "MARKET_RESEARCH_SEARCH_PROVIDER", "tavily"
+        )  # "tavily" | "exa"
+        self.MARKET_RESEARCH_MAX_RESULTS = int(
+            os.getenv("MARKET_RESEARCH_MAX_RESULTS", "25")
+        )
+        self.MARKET_RESEARCH_URL_TTL_DAYS = int(
+            os.getenv("MARKET_RESEARCH_URL_TTL_DAYS", "7")
+        )
+
         # Plugins (comma-separated list of plugin names to load)
         self.PLUGINS = os.getenv("PLUGINS", "calendar,gmail")
 
