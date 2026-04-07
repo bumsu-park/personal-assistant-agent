@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -11,6 +12,9 @@ from icalendar import Event as IEvent
 from langchain_core.tools import tool
 
 logger = logging.getLogger(__name__)
+
+_CALDAV_TIMEOUT = 30
+_MAX_RETRIES = 3
 
 
 class CalendarService:
@@ -27,8 +31,20 @@ class CalendarService:
         self.agent_name = agent_name
         url = "https://caldav.icloud.com/"
 
+        self._url = url
+        self._username = username
+        self._password = password
+        self._connect()
+
+    def _connect(self) -> None:
+        """(Re)establish the CalDAV connection."""
         try:
-            self.client = DAVClient(url=url, username=username, password=password)
+            self.client = DAVClient(
+                url=self._url,
+                username=self._username,
+                password=self._password,
+                timeout=_CALDAV_TIMEOUT,
+            )
             self.principal = self.client.principal()
             calendars = self.principal.calendars()
             self.calendar = None
@@ -49,6 +65,23 @@ class CalendarService:
         except Exception as e:
             logger.error(f"Failed to connect to iCloud calendar: {e}")
             raise
+
+    def _retry(self, fn, *args, **kwargs):
+        """Call *fn* with reconnect-and-retry on timeout/connection errors."""
+        for attempt in range(1, _MAX_RETRIES + 1):
+            try:
+                return fn(*args, **kwargs)
+            except Exception as e:
+                is_retryable = "timed out" in str(e).lower() or "connection" in str(e).lower()
+                if not is_retryable or attempt == _MAX_RETRIES:
+                    raise
+                wait = 2 ** attempt
+                logger.warning(
+                    f"CalDAV attempt {attempt}/{_MAX_RETRIES} failed: {e}. "
+                    f"Reconnecting in {wait}s..."
+                )
+                time.sleep(wait)
+                self._connect()
 
     def create_event(
         self,
@@ -103,7 +136,7 @@ class CalendarService:
             cal.add_component(event)
 
             ical_string = cal.to_ical().decode("utf-8")
-            created_event = self.calendar.save_event(ical_string)
+            created_event = self._retry(self.calendar.save_event, ical_string)
             logger.info(f"Event created in {self.provider}: {summary}")
 
             return {
@@ -129,8 +162,9 @@ class CalendarService:
             if time_max is None:
                 time_max = time_min + timedelta(days=30)
 
-            events = self.calendar.date_search(
-                start=time_min, end=time_max, expand=True
+            events = self._retry(
+                self.calendar.date_search,
+                start=time_min, end=time_max, expand=True,
             )
             results = []
 
@@ -180,8 +214,9 @@ class CalendarService:
 
             time_max = time_min + timedelta(days=365)
 
-            events = self.calendar.date_search(
-                start=time_min, end=time_max, expand=True
+            events = self._retry(
+                self.calendar.date_search,
+                start=time_min, end=time_max, expand=True,
             )
 
             results = []
@@ -234,8 +269,8 @@ class CalendarService:
     def delete_event(self, event_id: str) -> bool:
         """Delete an event by ID."""
         try:
-            event = self.calendar.event_by_url(event_id)
-            event.delete()
+            event = self._retry(self.calendar.event_by_url, event_id)
+            self._retry(event.delete)
             logger.info(f"Event deleted from {self.provider}: {event_id}")
             return True
         except Exception as e:
