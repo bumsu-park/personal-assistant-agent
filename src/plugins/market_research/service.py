@@ -196,7 +196,10 @@ class MarketResearchService:
 
         all_snippets: list[dict[str, str]] = []
         for q in queries:
-            results = await self._searcher.search(q, max_results=5)
+            try:
+                results = await self._searcher.search(q, max_results=5)
+            except SearchBillingError:
+                raise
             for r in results:
                 all_snippets.append(
                     {
@@ -365,6 +368,22 @@ class _SearchProvider:
         raise NotImplementedError
 
 
+class SearchBillingError(Exception):
+    """Raised when a search API call fails due to billing, quota, or auth issues."""
+
+
+_BILLING_KEYWORDS = ("quota", "credit", "billing", "payment", "insufficient", "exceeded", "limit reached", "plan")
+_AUTH_STATUS_CODES = (401, 402, 403, 429)
+
+
+def _is_billing_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    if any(kw in msg for kw in _BILLING_KEYWORDS):
+        return True
+    status = getattr(exc, "status_code", None) or getattr(exc, "status", None)
+    return status in _AUTH_STATUS_CODES and any(kw in msg for kw in ("key", "auth", "quota", "credit", "limit"))
+
+
 class _TavilyProvider(_SearchProvider):
     def __init__(self, api_key: str) -> None:
         self._api_key = api_key
@@ -377,6 +396,9 @@ class _TavilyProvider(_SearchProvider):
             raw = await asyncio.wait_for(t.ainvoke(query), timeout=10)
             return raw if isinstance(raw, list) else []
         except Exception as exc:
+            if _is_billing_error(exc):
+                logger.error("Tavily API billing/quota error: %s", exc)
+                raise SearchBillingError(f"Tavily API key issue — {exc}") from exc
             logger.warning("Tavily search failed: %s", exc)
             return []
 
@@ -408,6 +430,9 @@ class _ExaProvider(_SearchProvider):
                 for r in response.results
             ]
         except Exception as exc:
+            if _is_billing_error(exc):
+                logger.error("Exa API billing/quota error: %s", exc)
+                raise SearchBillingError(f"Exa API key issue — {exc}") from exc
             logger.warning("Exa search failed: %s", exc)
             return []
 
