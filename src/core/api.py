@@ -47,17 +47,13 @@ def create_app(
                 detail=f"Unknown agent: {request.agent}",
             ) from err
 
-        logger.info(
-            f"API chat request: agent={request.agent} user_id={request.user_id}"
-        )
+        logger.info(f"API chat request: agent={request.agent} user_id={request.user_id}")
 
         today = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
         base_thread_id = f"{request.agent}_{request.user_id}_{today}"
 
         agent_config = registry.configs.get(request.agent)
-        cmd_result = await dispatch(
-            request.message, thread_id=base_thread_id, config=agent_config
-        )
+        cmd_result = await dispatch(request.message, thread_id=base_thread_id, config=agent_config)
         if cmd_result is not None:
             return ChatResponse(response=cmd_result)
 
@@ -72,9 +68,7 @@ def create_app(
         )
         content = result["messages"][-1].content
         if isinstance(content, list):
-            content = "".join(
-                block["text"] for block in content if block.get("type") == "text"
-            )
+            content = "".join(block["text"] for block in content if block.get("type") == "text")
         return ChatResponse(response=content)
 
     @app.get("/health")

@@ -23,9 +23,7 @@ class GmailPlugin(Plugin):
         return cls(config=config, credentials_path=config.GMAIL_CREDENTIALS_PATH)
 
     async def setup(self) -> None:
-        self._service = GmailService(
-            self._config, credentials_path=self._credentials_path
-        )
+        self._service = GmailService(self._config, credentials_path=self._credentials_path)
 
     def tools(self) -> list:
         return _make_tools(lambda: self._service, self._config)

@@ -36,9 +36,7 @@ class GmailService:
 
     def _authenticate(self):
         if self.token_path.exists():
-            self.creds = Credentials.from_authorized_user_file(
-                str(self.token_path), SCOPES
-            )
+            self.creds = Credentials.from_authorized_user_file(str(self.token_path), SCOPES)
 
         if not self.creds or not self.creds.valid:
             if self.creds and self.creds.expired and self.creds.refresh_token:
@@ -51,12 +49,8 @@ class GmailService:
                 credentials_path = Path(project_root) / self._credentials_path
                 if not credentials_path.exists():
                     logger.error("No credentials found for gmail service")
-                    raise FileNotFoundError(
-                        f"Credentials file not found at {credentials_path}"
-                    )
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    str(credentials_path), SCOPES
-                )
+                    raise FileNotFoundError(f"Credentials file not found at {credentials_path}")
+                flow = InstalledAppFlow.from_client_secrets_file(str(credentials_path), SCOPES)
                 self.creds = flow.run_local_server(port=0)
 
             with open(self.token_path, "w") as token:
@@ -70,31 +64,19 @@ class GmailService:
             logger.error("Gmail service not initialized")
             raise RuntimeError("Gmail Service is not working")
 
-        email_items = (
-            self.service.users()
-            .messages()
-            .list(userId="me", q=q_parameter, maxResults=max_results)
-            .execute()
-        )
+        email_items = self.service.users().messages().list(userId="me", q=q_parameter, maxResults=max_results).execute()
 
         emails = []
 
         for item in email_items.get("messages", []):
-            full_msg = (
-                self.service.users()
-                .messages()
-                .get(userId="me", id=item["id"], format="full")
-                .execute()
-            )
+            full_msg = self.service.users().messages().get(userId="me", id=item["id"], format="full").execute()
             emails.append(full_msg)
             self.mark_as_read(item["id"])
 
         return emails
 
     def mark_as_read(self, email_id) -> None:
-        self.service.users().messages().modify(
-            userId="me", id=email_id, body={"removeLabelIds": ["UNREAD"]}
-        ).execute()
+        self.service.users().messages().modify(userId="me", id=email_id, body={"removeLabelIds": ["UNREAD"]}).execute()
 
 
 def _make_tools(get_service: callable, config: Config) -> list:
@@ -128,9 +110,7 @@ def _make_tools(get_service: callable, config: Config) -> list:
             gmail_service = get_service()
             llm_with_structure = llm.with_structured_output(EmailSummaryOutput)
 
-            emails = gmail_service.query_emails(
-                q_parameter=query_parameter, max_results=max_results
-            )
+            emails = gmail_service.query_emails(q_parameter=query_parameter, max_results=max_results)
 
             if not emails:
                 return f"Found {len(emails)} unread emails."
@@ -162,16 +142,13 @@ Format each as a clean block, no markdown. If nothing stands out, say "Nothing w
 
             email_blocks = []
             for e in response.emails:
-                block = (
-                    f"[{e.urgency.upper()}] {e.sender} — {e.subject}\n  {e.summary}"
-                )
+                block = f"[{e.urgency.upper()}] {e.sender} — {e.subject}\n  {e.summary}"
                 if e.action:
                     block += f"\n  Action: {e.action}"
                 email_blocks.append(block)
 
-            return (
-                f"Found {len(emails)} unread emails, {response.spam_count} skipped as noise.\n\n"
-                + "\n\n".join(email_blocks)
+            return f"Found {len(emails)} unread emails, {response.spam_count} skipped as noise.\n\n" + "\n\n".join(
+                email_blocks
             )
         except Exception as e:
             logger.error(f"Error in retrieve_unread_emails tool: {e}", exc_info=True)

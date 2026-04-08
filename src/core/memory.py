@@ -66,10 +66,7 @@ async def delete_thread(config: Config, thread_id: str) -> None:
                     f"DELETE FROM {table} WHERE thread_id = ?",
                     (thread_id,),
                 )
-                logger.info(
-                    f"Deleted {result.rowcount} rows from {table} "
-                    f"for thread {thread_id}"
-                )
+                logger.info(f"Deleted {result.rowcount} rows from {table} for thread {thread_id}")
             await db.commit()
     except Exception as e:
         logger.error(f"Error deleting thread {thread_id}: {e}", exc_info=True)
@@ -81,10 +78,9 @@ async def purge_old_checkpoints(config: Config):
         logger.info(f"No checkpoint DB found at {checkpoint_path}, skipping purge.")
         return
 
-    cutoff_date = (
-        datetime.now(ZoneInfo("America/New_York"))
-        - timedelta(days=config.CHECKPOINT_PURGE_DAYS)
-    ).strftime("%Y-%m-%d")
+    cutoff_date = (datetime.now(ZoneInfo("America/New_York")) - timedelta(days=config.CHECKPOINT_PURGE_DAYS)).strftime(
+        "%Y-%m-%d"
+    )
 
     try:
         async with aiosqlite.connect(str(checkpoint_path)) as db:

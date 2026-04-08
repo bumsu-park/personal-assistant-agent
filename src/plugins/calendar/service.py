@@ -56,9 +56,7 @@ class CalendarService:
                     self.calendar = cal
                     break
             if not self.calendar:
-                raise Exception(
-                    f"'Home' calendar not found. Available calendars: {[c.name for c in calendars]}"
-                )
+                raise Exception(f"'Home' calendar not found. Available calendars: {[c.name for c in calendars]}")
 
             logger.info(f"Connected to iCloud calendar: {self.calendar.name}")
 
@@ -75,11 +73,8 @@ class CalendarService:
                 is_retryable = "timed out" in str(e).lower() or "connection" in str(e).lower()
                 if not is_retryable or attempt == _MAX_RETRIES:
                     raise
-                wait = 2 ** attempt
-                logger.warning(
-                    f"CalDAV attempt {attempt}/{_MAX_RETRIES} failed: {e}. "
-                    f"Reconnecting in {wait}s..."
-                )
+                wait = 2**attempt
+                logger.warning(f"CalDAV attempt {attempt}/{_MAX_RETRIES} failed: {e}. Reconnecting in {wait}s...")
                 time.sleep(wait)
                 self._connect()
 
@@ -164,7 +159,9 @@ class CalendarService:
 
             events = self._retry(
                 self.calendar.date_search,
-                start=time_min, end=time_max, expand=True,
+                start=time_min,
+                end=time_max,
+                expand=True,
             )
             results = []
 
@@ -173,22 +170,14 @@ class CalendarService:
                 categories = None
                 if hasattr(vev, "categories"):
                     cats = vev.categories.value
-                    categories = list(cats) if isinstance(cats, (list, tuple)) else [str(cats)]
+                    categories = list(cats) if isinstance(cats, list | tuple) else [str(cats)]
                 results.append(
                     {
                         "summary": str(vev.summary.value),
-                        "start": vev.dtstart.value.isoformat()
-                        if hasattr(vev, "dtstart")
-                        else None,
-                        "end": vev.dtend.value.isoformat()
-                        if hasattr(vev, "dtend")
-                        else None,
-                        "description": vev.description.value
-                        if hasattr(vev, "description")
-                        else None,
-                        "location": vev.location.value
-                        if hasattr(vev, "location")
-                        else None,
+                        "start": vev.dtstart.value.isoformat() if hasattr(vev, "dtstart") else None,
+                        "end": vev.dtend.value.isoformat() if hasattr(vev, "dtend") else None,
+                        "description": vev.description.value if hasattr(vev, "description") else None,
+                        "location": vev.location.value if hasattr(vev, "location") else None,
                         "categories": categories,
                         "id": str(event.url),
                         "provider": self.provider,
@@ -216,38 +205,29 @@ class CalendarService:
 
             events = self._retry(
                 self.calendar.date_search,
-                start=time_min, end=time_max, expand=True,
+                start=time_min,
+                end=time_max,
+                expand=True,
             )
 
             results = []
             for event in events:
                 vev = event.vobject_instance.vevent
                 summary = str(vev.summary.value) if hasattr(vev, "summary") else ""
-                description = (
-                    str(vev.description.value) if hasattr(vev, "description") else ""
-                )
+                description = str(vev.description.value) if hasattr(vev, "description") else ""
 
-                if (
-                    query.lower() in summary.lower()
-                    or query.lower() in description.lower()
-                ):
+                if query.lower() in summary.lower() or query.lower() in description.lower():
                     categories = None
                     if hasattr(vev, "categories"):
                         cats = vev.categories.value
-                        categories = list(cats) if isinstance(cats, (list, tuple)) else [str(cats)]
+                        categories = list(cats) if isinstance(cats, list | tuple) else [str(cats)]
                     results.append(
                         {
                             "summary": summary,
-                            "start": vev.dtstart.value.isoformat()
-                            if hasattr(vev, "dtstart")
-                            else None,
-                            "end": vev.dtend.value.isoformat()
-                            if hasattr(vev, "dtend")
-                            else None,
+                            "start": vev.dtstart.value.isoformat() if hasattr(vev, "dtstart") else None,
+                            "end": vev.dtend.value.isoformat() if hasattr(vev, "dtend") else None,
                             "description": description,
-                            "location": vev.location.value
-                            if hasattr(vev, "location")
-                            else None,
+                            "location": vev.location.value if hasattr(vev, "location") else None,
                             "categories": categories,
                             "id": str(event.url),
                             "provider": self.provider,
@@ -257,9 +237,7 @@ class CalendarService:
                     if len(results) >= max_results:
                         break
 
-            logger.info(
-                f"Found {len(results)} events matching '{query}' in {self.provider}"
-            )
+            logger.info(f"Found {len(results)} events matching '{query}' in {self.provider}")
             return results
 
         except Exception as e:

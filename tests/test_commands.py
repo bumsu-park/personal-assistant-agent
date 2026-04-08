@@ -55,9 +55,7 @@ class TestDispatch:
             return f"echo: {args}"
 
         try:
-            result = await dispatch(
-                "/_test_echo some arg", thread_id="t1", config=mock_config
-            )
+            result = await dispatch("/_test_echo some arg", thread_id="t1", config=mock_config)
             assert result == "echo: some arg"
             assert called_with["args"] == "some arg"
         finally:
@@ -69,9 +67,7 @@ class TestClearCommand:
     async def test_clear_calls_delete_thread(self, mock_config):
         _sessions["t1"] = "abc123"
 
-        with patch(
-            "src.core.memory.delete_thread", new_callable=AsyncMock
-        ) as mock_delete:
+        with patch("src.core.memory.delete_thread", new_callable=AsyncMock) as mock_delete:
             result = await dispatch("/clear", thread_id="t1", config=mock_config)
 
         assert result == "Chat history cleared."
@@ -80,9 +76,7 @@ class TestClearCommand:
 
     @pytest.mark.asyncio
     async def test_clear_without_session(self, mock_config):
-        with patch(
-            "src.core.memory.delete_thread", new_callable=AsyncMock
-        ) as mock_delete:
+        with patch("src.core.memory.delete_thread", new_callable=AsyncMock) as mock_delete:
             result = await dispatch("/clear", thread_id="t1", config=mock_config)
 
         mock_delete.assert_awaited_once_with(mock_config, "t1")

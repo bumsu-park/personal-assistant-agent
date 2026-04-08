@@ -6,17 +6,13 @@ def get_email_body(payload) -> str:
     body = ""
 
     if "body" in payload and payload["body"].get("data"):
-        body = base64.urlsafe_b64decode(payload["body"]["data"]).decode(
-            "utf-8", errors="ignore"
-        )
+        body = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="ignore")
 
     if "parts" in payload:
         for part in payload["parts"]:
             if part["mimeType"] == "text/plain":
                 if part["body"].get("data"):
-                    body = base64.urlsafe_b64decode(part["body"]["data"]).decode(
-                        "utf-8", errors="ignore"
-                    )
+                    body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="ignore")
                     break
             elif "parts" in part:
                 body = get_email_body(part)
@@ -29,9 +25,7 @@ def get_email_body(payload) -> str:
 def parse_email(email):
     headers = email["payload"]["headers"]
 
-    subject = next(
-        (h["value"] for h in headers if h["name"] == "Subject"), "No Subject"
-    )
+    subject = next((h["value"] for h in headers if h["name"] == "Subject"), "No Subject")
     sender = next((h["value"] for h in headers if h["name"] == "From"), "Unknown")
     date = next((h["value"] for h in headers if h["name"] == "Date"), "Unknown")
 

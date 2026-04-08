@@ -26,9 +26,7 @@ def command(name: str):
     return decorator
 
 
-async def dispatch(
-    message: str, *, thread_id: str, config: Config
-) -> str | None:
+async def dispatch(message: str, *, thread_id: str, config: Config) -> str | None:
     """Run a slash command if message starts with `/`, else return None."""
     if not message.startswith("/"):
         return None
