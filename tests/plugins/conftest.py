@@ -8,7 +8,6 @@ here prevents ImportErrors when src/plugins/__init__.py is loaded.
 from __future__ import annotations
 
 import sys
-from types import ModuleType
 from unittest.mock import MagicMock
 
 
