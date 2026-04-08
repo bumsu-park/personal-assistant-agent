@@ -6,11 +6,13 @@ import pytest
 import pytest_asyncio
 
 from src.plugins.market_research.models import ProspectStatus
+from src.plugins.market_research.service import MarketResearchService
 from src.plugins.market_research.storage import ProspectStore
 
 # ------------------------------------------------------------------ #
 # Fixtures                                                             #
 # ------------------------------------------------------------------ #
+
 
 @pytest_asyncio.fixture
 async def store(tmp_path: Path) -> ProspectStore:
@@ -22,6 +24,7 @@ async def store(tmp_path: Path) -> ProspectStore:
 # ------------------------------------------------------------------ #
 # ProspectStore — CRUD                                                 #
 # ------------------------------------------------------------------ #
+
 
 @pytest.mark.asyncio
 async def test_add_and_list_prospect(store: ProspectStore) -> None:
@@ -101,6 +104,7 @@ async def test_website_deduplication(store: ProspectStore) -> None:
 # Emails                                                               #
 # ------------------------------------------------------------------ #
 
+
 @pytest.mark.asyncio
 async def test_add_multiple_emails(store: ProspectStore) -> None:
     p = await store.add(company_name="Email Corp")
@@ -109,7 +113,7 @@ async def test_add_multiple_emails(store: ProspectStore) -> None:
     e2 = await store.add_email(p.id, "sales@email.com")
     assert e1 is not None
     assert e2 is not None
-    assert e1.is_primary is True   # first email becomes primary
+    assert e1.is_primary is True  # first email becomes primary
     assert e2.is_primary is False
 
     full = await store.get(p.id)
@@ -152,6 +156,7 @@ async def test_email_label_parsed(store: ProspectStore) -> None:
 # Visited URLs                                                         #
 # ------------------------------------------------------------------ #
 
+
 @pytest.mark.asyncio
 async def test_visited_url_within_ttl(store: ProspectStore) -> None:
     await store.mark_url_visited("https://example.com")
@@ -166,6 +171,7 @@ async def test_unvisited_url(store: ProspectStore) -> None:
 # ------------------------------------------------------------------ #
 # Email extraction                                                     #
 # ------------------------------------------------------------------ #
+
 
 def test_extract_emails_from_text() -> None:
     text = "Contact us at hello@acme.com or sales@acme.com for more info."
@@ -184,6 +190,7 @@ def test_extract_emails_deduplicates() -> None:
 # ------------------------------------------------------------------ #
 # Research brief                                                       #
 # ------------------------------------------------------------------ #
+
 
 def test_research_brief_default_created(tmp_path: Path) -> None:
     from unittest.mock import MagicMock
@@ -231,8 +238,125 @@ def test_research_brief_update(tmp_path: Path) -> None:
 
 
 # ------------------------------------------------------------------ #
+# Company profiles                                                     #
+# ------------------------------------------------------------------ #
+
+
+def _make_svc(tmp_path: Path) -> MarketResearchService:
+    from unittest.mock import MagicMock
+
+    config = MagicMock()
+    config.DATA_DIR = tmp_path
+    config.TAVILY_API_KEY = ""
+    config.EXA_API_KEY = ""
+    config.MARKET_RESEARCH_SEARCH_PROVIDER = "tavily"
+    config.MARKET_RESEARCH_MAX_RESULTS = 25
+    config.MARKET_RESEARCH_URL_TTL_DAYS = 7
+
+    import asyncio
+
+    svc = MarketResearchService(config)
+    asyncio.run(svc.setup())
+    return svc
+
+
+def test_profiles_dir_created(tmp_path: Path) -> None:
+    _make_svc(tmp_path)
+    assert (tmp_path / "profiles").is_dir()
+
+
+def test_get_profile_returns_none_when_missing(tmp_path: Path) -> None:
+    svc = _make_svc(tmp_path)
+    assert svc.get_profile(999) is None
+
+
+def test_write_and_read_profile(tmp_path: Path) -> None:
+    svc = _make_svc(tmp_path)
+    content = "# Acme Corp\n\n## Overview\nWidgets for everyone."
+    svc._write_profile(42, content)
+
+    assert svc.get_profile(42) == content
+    assert (tmp_path / "profiles" / "42.md").exists()
+
+
+def test_delete_prospect_removes_profile(tmp_path: Path) -> None:
+    import asyncio
+
+    svc = _make_svc(tmp_path)
+    asyncio.run(svc.add_prospect("Cleanup Corp"))
+    prospects = asyncio.run(svc._store.list_all())
+    pid = prospects[0].id
+
+    svc._write_profile(pid, "# Cleanup Corp\n\nSome profile.")
+    assert svc.get_profile(pid) is not None
+
+    asyncio.run(svc.delete_prospect(pid))
+    assert svc.get_profile(pid) is None
+    assert not (tmp_path / "profiles" / f"{pid}.md").exists()
+
+
+def test_research_prospect_no_provider(tmp_path: Path) -> None:
+    import asyncio
+
+    svc = _make_svc(tmp_path)
+    asyncio.run(svc.add_prospect("No Search Corp"))
+    prospects = asyncio.run(svc._store.list_all())
+    result = asyncio.run(svc.research_prospect(prospects[0].id))
+    assert "TAVILY_API_KEY" in result or "EXA_API_KEY" in result
+
+
+def test_research_prospect_not_found(tmp_path: Path) -> None:
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    svc = _make_svc(tmp_path)
+    mock_searcher = MagicMock()
+    mock_searcher.search = AsyncMock(return_value=[])
+    svc._searcher = mock_searcher
+
+    result = asyncio.run(svc.research_prospect(9999))
+    assert "not found" in result
+
+
+def test_research_prospect_with_mock_search_and_llm(tmp_path: Path) -> None:
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    svc = _make_svc(tmp_path)
+    asyncio.run(svc.add_prospect("Research Corp", website="https://research.com"))
+    prospects = asyncio.run(svc._store.list_all())
+    pid = prospects[0].id
+
+    mock_searcher = MagicMock()
+    mock_searcher.search = AsyncMock(
+        return_value=[
+            {"url": "https://research.com/about", "title": "About Research Corp", "content": "We make widgets."},
+        ]
+    )
+    svc._searcher = mock_searcher
+
+    mock_llm_response = MagicMock()
+    mock_llm_response.content = "# Research Corp\n\n## Overview\nWidget maker since 2020."
+
+    with patch("src.core.llm.create_llm") as mock_create:
+        mock_llm = AsyncMock()
+        mock_llm.ainvoke = AsyncMock(return_value=mock_llm_response)
+        mock_create.return_value = mock_llm
+
+        result = asyncio.run(svc.research_prospect(pid))
+
+    assert "Research Corp" in result
+    assert "Widget maker" in result
+    assert svc.get_profile(pid) is not None
+
+    updated = asyncio.run(svc._store.get(pid))
+    assert updated.status == ProspectStatus.RESEARCHING
+
+
+# ------------------------------------------------------------------ #
 # No search provider — graceful degradation                            #
 # ------------------------------------------------------------------ #
+
 
 def test_search_for_prospects_no_provider(tmp_path: Path) -> None:
     from unittest.mock import MagicMock
@@ -252,7 +376,7 @@ def test_search_for_prospects_no_provider(tmp_path: Path) -> None:
     svc = MarketResearchService(config)
     asyncio.run(svc.setup())
 
-    result = asyncio.run(svc.search_for_prospects())
+    result = asyncio.run(svc.search_for_prospects(query="test query"))
     assert "TAVILY_API_KEY" in result or "EXA_API_KEY" in result
 
 

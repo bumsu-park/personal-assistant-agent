@@ -12,9 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def _build_llm(provider: str, config: Config) -> BaseChatModel:
-    logger.info(
-        "Initializing LLM with provider: %s (agent=%s)", provider, config.agent_name
-    )
+    logger.info("Initializing LLM with provider: %s (agent=%s)", provider, config.agent_name)
 
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic

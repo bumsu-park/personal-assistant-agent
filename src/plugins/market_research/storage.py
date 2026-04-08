@@ -122,17 +122,13 @@ class ProspectStore:
                 (company_name, website, contact_name, industry, notes, source, now, now),
             )
             await db.commit()
-            row = await (
-                await db.execute("SELECT * FROM prospects WHERE id=?", (cur.lastrowid,))
-            ).fetchone()
+            row = await (await db.execute("SELECT * FROM prospects WHERE id=?", (cur.lastrowid,))).fetchone()
         return _row_to_prospect(row, [])
 
     async def get(self, prospect_id: int) -> Prospect | None:
         async with aiosqlite.connect(self._db_path) as db:
             db.row_factory = aiosqlite.Row
-            row = await (
-                await db.execute("SELECT * FROM prospects WHERE id=?", (prospect_id,))
-            ).fetchone()
+            row = await (await db.execute("SELECT * FROM prospects WHERE id=?", (prospect_id,))).fetchone()
             if row is None:
                 return None
             emails = await (
@@ -178,8 +174,13 @@ class ProspectStore:
 
     async def update(self, prospect_id: int, **fields: Any) -> Prospect:
         allowed = {
-            "company_name", "website", "contact_name", "industry",
-            "status", "notes", "last_contacted_at",
+            "company_name",
+            "website",
+            "contact_name",
+            "industry",
+            "status",
+            "notes",
+            "last_contacted_at",
         }
         updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
         if not updates:
@@ -192,9 +193,7 @@ class ProspectStore:
         set_clause = ", ".join(f"{k}=?" for k in updates)
         values = [*list(updates.values()), prospect_id]
         async with aiosqlite.connect(self._db_path) as db:
-            await db.execute(
-                f"UPDATE prospects SET {set_clause} WHERE id=?", values
-            )
+            await db.execute(f"UPDATE prospects SET {set_clause} WHERE id=?", values)
             await db.commit()
         p = await self.get(prospect_id)
         if p is None:
@@ -203,28 +202,18 @@ class ProspectStore:
 
     async def delete(self, prospect_id: int) -> bool:
         async with aiosqlite.connect(self._db_path) as db:
-            cur = await db.execute(
-                "DELETE FROM prospects WHERE id=?", (prospect_id,)
-            )
+            cur = await db.execute("DELETE FROM prospects WHERE id=?", (prospect_id,))
             await db.commit()
         return cur.rowcount > 0
 
     async def summary(self) -> dict[str, int]:
         async with aiosqlite.connect(self._db_path) as db:
-            rows = await (
-                await db.execute(
-                    "SELECT status, COUNT(*) as cnt FROM prospects GROUP BY status"
-                )
-            ).fetchall()
+            rows = await (await db.execute("SELECT status, COUNT(*) as cnt FROM prospects GROUP BY status")).fetchall()
         return {r[0]: r[1] for r in rows}
 
     async def website_exists(self, website: str) -> bool:
         async with aiosqlite.connect(self._db_path) as db:
-            row = await (
-                await db.execute(
-                    "SELECT id FROM prospects WHERE website=?", (website,)
-                )
-            ).fetchone()
+            row = await (await db.execute("SELECT id FROM prospects WHERE website=?", (website,))).fetchone()
         return row is not None
 
     # ------------------------------------------------------------------ #
@@ -264,11 +253,7 @@ class ProspectStore:
                     (prospect_id, email, label, is_primary, source, now),
                 )
                 await db.commit()
-                row = await (
-                    await db.execute(
-                        "SELECT * FROM prospect_emails WHERE id=?", (cur.lastrowid,)
-                    )
-                ).fetchone()
+                row = await (await db.execute("SELECT * FROM prospect_emails WHERE id=?", (cur.lastrowid,))).fetchone()
             except aiosqlite.IntegrityError:
                 # Duplicate — already stored
                 return None
@@ -308,9 +293,7 @@ class ProspectStore:
             await db.commit()
 
     async def was_url_visited(self, url: str, ttl_days: int = 7) -> bool:
-        cutoff = (
-            datetime.now(UTC) - timedelta(days=ttl_days)
-        ).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(days=ttl_days)).isoformat()
         async with aiosqlite.connect(self._db_path) as db:
             row = await (
                 await db.execute(

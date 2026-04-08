@@ -36,7 +36,7 @@ def create_nodes(
 
         max_msgs = config.MAX_MESSAGES
         if len(history) > max_msgs:
-            history = [history[0], *history[-(max_msgs - 1):]]
+            history = [history[0], *history[-(max_msgs - 1) :]]
 
         response = await llm_with_tools.ainvoke(history)
 
@@ -73,26 +73,14 @@ def create_nodes(
                         result = await tool.ainvoke(tool_args)
                     except NotImplementedError:
                         result = tool.invoke(tool_args)
-                    tool_messages.append(
-                        ToolMessage(content=str(result), tool_call_id=tool_id)
-                    )
+                    tool_messages.append(ToolMessage(content=str(result), tool_call_id=tool_id))
                     logger.info(f"Tool {tool_name} executed successfully")
                 except Exception as e:
-                    logger.error(
-                        f"Error executing tool {tool_name}: {e}", exc_info=True
-                    )
-                    tool_messages.append(
-                        ToolMessage(
-                            content=f"Error: {e!s}", tool_call_id=tool_id
-                        )
-                    )
+                    logger.error(f"Error executing tool {tool_name}: {e}", exc_info=True)
+                    tool_messages.append(ToolMessage(content=f"Error: {e!s}", tool_call_id=tool_id))
             else:
                 logger.error(f"Unknown tool: {tool_name}")
-                tool_messages.append(
-                    ToolMessage(
-                        content=f"Unknown tool: {tool_name}", tool_call_id=tool_id
-                    )
-                )
+                tool_messages.append(ToolMessage(content=f"Unknown tool: {tool_name}", tool_call_id=tool_id))
 
         return {"messages": tool_messages, "next_action": "agent"}
 

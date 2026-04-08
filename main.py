@@ -7,7 +7,7 @@ import uvicorn
 import src.plugins  # noqa: F401 — triggers plugin registration
 from src.core.api import create_app
 from src.core.config import Config
-from src.core.memory import purge_old_checkpoints, close_all_checkpointers
+from src.core.memory import close_all_checkpointers, purge_old_checkpoints
 from src.core.plugin import PLUGIN_REGISTRY
 from src.core.registry import AgentRegistry
 
@@ -22,9 +22,7 @@ async def run_periodic_checkpoint_purge(registry: AgentRegistry):
     configs = registry.configs
     if not configs:
         return
-    interval_seconds = (
-        max(c.CHECKPOINT_PURGE_INTERVAL_HOURS for c in configs.values()) * 60 * 60
-    )
+    interval_seconds = max(c.CHECKPOINT_PURGE_INTERVAL_HOURS for c in configs.values()) * 60 * 60
     interval_seconds = max(3600, interval_seconds)
     while True:
         try:
@@ -44,21 +42,14 @@ async def main():
     try:
         agent_name = os.getenv("AGENT_NAME", "personal")
         env_file = os.getenv("ENV_FILE")
-        plugin_names = [
-            p.strip()
-            for p in os.getenv("PLUGINS", "calendar,gmail").split(",")
-            if p.strip()
-        ]
+        plugin_names = [p.strip() for p in os.getenv("PLUGINS", "calendar,gmail").split(",") if p.strip()]
 
         config = Config(agent_name, env_file=env_file)
 
         plugins = []
         for name in plugin_names:
             if name not in PLUGIN_REGISTRY:
-                raise ValueError(
-                    f"Unknown plugin '{name}'. "
-                    f"Available: {', '.join(PLUGIN_REGISTRY)}"
-                )
+                raise ValueError(f"Unknown plugin '{name}'. Available: {', '.join(PLUGIN_REGISTRY)}")
             plugins.append(PLUGIN_REGISTRY[name].from_config(config))
 
         logger.info(
@@ -77,9 +68,7 @@ async def main():
         host = config.FASTAPI_HOST
         port = config.FASTAPI_PORT
 
-        server = uvicorn.Server(
-            uvicorn.Config(app, host=host, port=port, log_level="info")
-        )
+        server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="info"))
 
         await asyncio.gather(
             server.serve(),

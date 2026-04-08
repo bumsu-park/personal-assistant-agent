@@ -36,9 +36,7 @@ async def create_agent(
         system_prompt_builder = config.build_system_prompt
 
     llm = create_llm(config)
-    agent_node, tool_node = create_nodes(
-        all_tools, llm, system_prompt_builder, config
-    )
+    agent_node, tool_node = create_nodes(all_tools, llm, system_prompt_builder, config)
 
     def should_continue(state: AgentState) -> str:
         return state["next_action"]
@@ -47,9 +45,7 @@ async def create_agent(
     graph.add_node("agent", agent_node)
     graph.add_node("tools", tool_node)
     graph.set_entry_point("agent")
-    graph.add_conditional_edges(
-        "agent", should_continue, {"tools": "tools", "end": END}
-    )
+    graph.add_conditional_edges("agent", should_continue, {"tools": "tools", "end": END})
     graph.add_edge("tools", "agent")
 
     if checkpointer is None:

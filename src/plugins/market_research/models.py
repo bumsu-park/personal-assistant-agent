@@ -53,10 +53,7 @@ class Prospect(BaseModel):
         extras = len(self.emails) - 1
         if extras > 0:
             email_str += f" (+{extras} more)"
-        return (
-            f"[{self.id}] {self.company_name} | {self.status.value} | "
-            f"{email_str} | {self.website or 'no website'}"
-        )
+        return f"[{self.id}] {self.company_name} | {self.status.value} | {email_str} | {self.website or 'no website'}"
 
     def format_detail(self) -> str:
         lines = [

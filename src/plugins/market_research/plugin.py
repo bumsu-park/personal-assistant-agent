@@ -32,6 +32,8 @@ class MarketResearchPlugin(Plugin):
         return (
             "You have access to a market research plugin for managing a prospect pipeline. "
             "Use get_research_brief to understand what kinds of clients to look for before searching. "
+            "After adding prospects, use research_prospect to generate a detailed company profile "
+            "(saved as Markdown). Use get_prospect_profile to retrieve an existing profile. "
             "After emailing a prospect via the Gmail plugin, always call update_prospect to set "
             "their status to 'contacted' and record last_contacted_at."
         )

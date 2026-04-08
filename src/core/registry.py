@@ -12,9 +12,7 @@ class AgentRegistry:
         self._graphs: dict = {}
         self._configs: dict[str, Config] = {}
 
-    async def register(
-        self, agent_name: str, config: Config, plugins: list[Plugin]
-    ) -> None:
+    async def register(self, agent_name: str, config: Config, plugins: list[Plugin]) -> None:
         config.validate()
         compiled = await create_agent(plugins=plugins, config=config)
         self._graphs[agent_name] = compiled

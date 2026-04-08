@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,6 +12,8 @@ from langchain_core.tools import tool
 from src.plugins.market_research.storage import ProspectStore
 
 if TYPE_CHECKING:
+    from langchain_core.language_models.chat_models import BaseChatModel
+
     from src.core.config import Config
 
 logger = logging.getLogger(__name__)
@@ -39,10 +43,12 @@ class MarketResearchService:
         self._config = config
         self._store = ProspectStore(config.DATA_DIR / "prospects.db")
         self._brief_path: Path = config.DATA_DIR / "market_research_brief.md"
+        self._profiles_dir: Path = config.DATA_DIR / "profiles"
         self._searcher: _SearchProvider | None = None
 
     async def setup(self) -> None:
         await self._store.initialize()
+        self._profiles_dir.mkdir(parents=True, exist_ok=True)
         if not self._brief_path.exists():
             self._brief_path.write_text(_DEFAULT_BRIEF, encoding="utf-8")
             logger.info("Created default market research brief at %s", self._brief_path)
@@ -84,9 +90,7 @@ class MarketResearchService:
             prospect = await self._store.get(prospect.id)
         return f"Added prospect:\n{prospect.format_detail()}"
 
-    async def list_prospects(
-        self, status: str | None = None, limit: int = 20
-    ) -> str:
+    async def list_prospects(self, status: str | None = None, limit: int = 20) -> str:
         prospects = await self._store.list_all(status=status, limit=limit)
         if not prospects:
             msg = "No prospects found"
@@ -136,6 +140,7 @@ class MarketResearchService:
     async def delete_prospect(self, prospect_id: int) -> str:
         ok = await self._store.delete(prospect_id)
         if ok:
+            self._delete_profile(prospect_id)
             return f"Prospect {prospect_id} deleted."
         return f"Prospect {prospect_id} not found."
 
@@ -152,12 +157,109 @@ class MarketResearchService:
         return "\n".join(lines)
 
     # ------------------------------------------------------------------ #
+    # Company Profiles                                                     #
+    # ------------------------------------------------------------------ #
+
+    def _profile_path(self, prospect_id: int) -> Path:
+        return self._profiles_dir / f"{prospect_id}.md"
+
+    def get_profile(self, prospect_id: int) -> str | None:
+        path = self._profile_path(prospect_id)
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+        return None
+
+    def _write_profile(self, prospect_id: int, content: str) -> Path:
+        path = self._profile_path(prospect_id)
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    def _delete_profile(self, prospect_id: int) -> None:
+        path = self._profile_path(prospect_id)
+        if path.exists():
+            path.unlink()
+
+    async def research_prospect(self, prospect_id: int) -> str:
+        """Run web searches on a prospect and synthesize a markdown profile via LLM."""
+        if self._searcher is None:
+            return "No search provider configured. Set TAVILY_API_KEY or EXA_API_KEY to enable prospect research."
+
+        p = await self._store.get(prospect_id)
+        if p is None:
+            return f"Prospect {prospect_id} not found."
+
+        queries = [f"{p.company_name} company about"]
+        if p.website:
+            queries[0] += f" site:{p.website}"
+        queries.append(f"{p.company_name} leadership team founders")
+        queries.append(f"{p.company_name} news funding 2025 2026")
+
+        all_snippets: list[dict[str, str]] = []
+        for q in queries:
+            results = await self._searcher.search(q, max_results=5)
+            for r in results:
+                all_snippets.append(
+                    {
+                        "url": r.get("url", ""),
+                        "title": r.get("title", ""),
+                        "content": r.get("content", ""),
+                    }
+                )
+
+        if not all_snippets:
+            return f"No search results found for '{p.company_name}'."
+
+        snippets_text = "\n\n---\n\n".join(
+            f"**{s['title']}** ({s['url']})\n{s['content']}" for s in all_snippets if s["content"]
+        )
+
+        brief = self.get_brief()
+        profile = await self._synthesize_profile(p.company_name, snippets_text, brief)
+
+        self._write_profile(prospect_id, profile)
+
+        if p.status.value == "new":
+            await self._store.update(prospect_id, status="researching")
+
+        logger.info("Wrote profile for prospect %d (%s)", prospect_id, p.company_name)
+        return profile
+
+    async def _synthesize_profile(self, company_name: str, snippets: str, brief: str) -> str:
+        from src.core.llm import create_llm
+
+        llm: BaseChatModel = create_llm(self._config)
+
+        system = (
+            "You are a market research analyst. Given raw web search snippets about a company, "
+            "produce a clean, structured Markdown company profile. Stick to facts from the snippets; "
+            "do not fabricate information. If a section has no data, write 'No information found.'\n\n"
+            "Use this template:\n\n"
+            f"# {company_name}\n\n"
+            f"_Last researched: {datetime.now(UTC).strftime('%Y-%m-%d')}_\n\n"
+            "## Overview\n{what they do, size, founding year, HQ location}\n\n"
+            "## Products / Services\n{what they sell or offer}\n\n"
+            "## Key People\n{leadership, founders, decision makers}\n\n"
+            "## Recent News\n{funding rounds, product launches, key hires, partnerships}\n\n"
+            "## Fit Assessment\n{how well they match the ideal customer profile below}\n\n"
+            "## Sources\n- {url1}\n- {url2}\n\n"
+            "---\n\n"
+            "### Ideal Customer Profile (for fit assessment):\n\n"
+            f"{brief}"
+        )
+
+        response = await llm.ainvoke(
+            [
+                {"role": "system", "content": system},
+                {"role": "user", "content": f"Raw search snippets:\n\n{snippets}"},
+            ]
+        )
+        return response.content
+
+    # ------------------------------------------------------------------ #
     # Web Research                                                         #
     # ------------------------------------------------------------------ #
 
-    async def search_for_prospects(
-        self, query: str | None = None, max_results: int = 10
-    ) -> str:
+    async def search_for_prospects(self, query: str | None = None, max_results: int = 10) -> str:
         if self._searcher is None:
             return (
                 "No search provider configured. Set TAVILY_API_KEY or EXA_API_KEY "
@@ -165,10 +267,12 @@ class MarketResearchService:
             )
 
         max_results = min(max_results, self._config.MARKET_RESEARCH_MAX_RESULTS)
-        brief = self.get_brief()
 
         if not query:
-            query = _build_prospect_query(brief)
+            return (
+                "Please provide a search query. Read the research brief first "
+                "(get_research_brief) and craft a targeted query based on the ICP."
+            )
 
         logger.info("Searching for prospects: %s (max=%d)", query, max_results)
         results = await self._searcher.search(query, max_results)
@@ -200,10 +304,7 @@ class MarketResearchService:
 
     async def find_contact_email(self, prospect_id: int) -> str:
         if self._searcher is None:
-            return (
-                "No search provider configured. Set TAVILY_API_KEY or EXA_API_KEY "
-                "to enable email lookup."
-            )
+            return "No search provider configured. Set TAVILY_API_KEY or EXA_API_KEY to enable email lookup."
 
         p = await self._store.get(prospect_id)
         if p is None:
@@ -225,9 +326,7 @@ class MarketResearchService:
             url = result.get("url", "")
             content = result.get("content", "") + " " + result.get("title", "")
 
-            if url and not await self._store.was_url_visited(
-                url, self._config.MARKET_RESEARCH_URL_TTL_DAYS
-            ):
+            if url and not await self._store.was_url_visited(url, self._config.MARKET_RESEARCH_URL_TTL_DAYS):
                 await self._store.mark_url_visited(url)
                 urls_checked += 1
 
@@ -238,17 +337,12 @@ class MarketResearchService:
 
         new_count = 0
         for email in found_emails:
-            result_obj = await self._store.add_email(
-                prospect_id, email, source="web_search"
-            )
+            result_obj = await self._store.add_email(prospect_id, email, source="web_search")
             if result_obj is not None:
                 new_count += 1
 
         if not found_emails:
-            return (
-                f"No email addresses found for '{p.company_name}'. "
-                "Try adding one manually with update_prospect."
-            )
+            return f"No email addresses found for '{p.company_name}'. Try adding one manually with update_prospect."
 
         updated = await self._store.get(prospect_id)
         lines = [
@@ -264,6 +358,7 @@ class MarketResearchService:
 # ------------------------------------------------------------------ #
 # Search provider abstraction                                          #
 # ------------------------------------------------------------------ #
+
 
 class _SearchProvider:
     async def search(self, query: str, max_results: int) -> list[dict]:
@@ -296,13 +391,11 @@ class _ExaProvider(_SearchProvider):
 
             exa = Exa(api_key=self._api_key)
             response = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: exa.search_and_contents(
-                        query,
-                        num_results=max_results,
-                        text=True,
-                    ),
+                asyncio.to_thread(
+                    exa.search_and_contents,
+                    query,
+                    num_results=max_results,
+                    text=True,
                 ),
                 timeout=10,
             )
@@ -330,23 +423,8 @@ def _build_searcher(config: Config) -> _SearchProvider | None:
     if config.EXA_API_KEY:
         logger.info("Falling back to Exa search provider")
         return _ExaProvider(config.EXA_API_KEY)
-    logger.warning(
-        "No search provider available. Set TAVILY_API_KEY or EXA_API_KEY."
-    )
+    logger.warning("No search provider available. Set TAVILY_API_KEY or EXA_API_KEY.")
     return None
-
-
-def _build_prospect_query(brief: str) -> str:
-    """Extract a usable search query from the brief."""
-    lines = [ln.strip() for ln in brief.splitlines() if ln.strip()]
-    # Pull ICP / industry lines from the brief as a rough query
-    for line in lines:
-        low = line.lower()
-        if "industry:" in low or "industry :" in low:
-            industry = line.split(":", 1)[-1].strip().lstrip("[").rstrip("]")
-            if industry and not industry.startswith("e.g"):
-                return f"companies {industry} contact"
-    return "potential client companies contact email"
 
 
 def _root_url(url: str) -> str:
@@ -361,7 +439,8 @@ def _root_url(url: str) -> str:
 # Tool factory                                                         #
 # ------------------------------------------------------------------ #
 
-def make_tools(get_service: object, config: Config) -> list:
+
+def make_tools(get_service: Callable[[], MarketResearchService], config: Config) -> list:
     def _svc() -> MarketResearchService:
         return get_service()  # type: ignore[operator]
 
@@ -383,7 +462,7 @@ def make_tools(get_service: object, config: Config) -> list:
         return "Research brief updated successfully."
 
     @tool
-    def add_prospect(
+    async def add_prospect(
         company_name: str,
         website: str | None = None,
         contact_name: str | None = None,
@@ -401,34 +480,34 @@ def make_tools(get_service: object, config: Config) -> list:
             industry: Industry or sector.
             notes: Any additional notes.
         """
-        return asyncio.run(
-            _svc().add_prospect(
-                company_name=company_name,
-                website=website,
-                contact_name=contact_name,
-                email=email,
-                industry=industry,
-                notes=notes,
-            )
+        return await _svc().add_prospect(
+            company_name=company_name,
+            website=website,
+            contact_name=contact_name,
+            email=email,
+            industry=industry,
+            notes=notes,
         )
 
     @tool
-    def search_for_prospects(
-        query: str | None = None,
+    async def search_for_prospects(
+        query: str,
         max_results: int = 10,
     ) -> str:
         """Search the web for potential client companies and add them to the prospect list.
-        Reads the research brief automatically to build a targeted query. Skips companies
-        already in the list. Requires TAVILY_API_KEY or EXA_API_KEY.
+        IMPORTANT: Before calling this tool, read the research brief (get_research_brief)
+        and craft a targeted search query based on the ICP, industry, geography, and
+        product fit. Skips companies already in the list. Requires TAVILY_API_KEY or
+        EXA_API_KEY.
 
         Args:
-            query: Optional custom search query. If omitted, built from the research brief.
+            query: A targeted web search query derived from the research brief.
             max_results: Number of results to fetch (default 10, max 25).
         """
-        return asyncio.run(_svc().search_for_prospects(query=query, max_results=max_results))
+        return await _svc().search_for_prospects(query=query, max_results=max_results)
 
     @tool
-    def list_prospects(status: str | None = None, limit: int = 20) -> str:
+    async def list_prospects(status: str | None = None, limit: int = 20) -> str:
         """List prospects in the pipeline, optionally filtered by status.
 
         Args:
@@ -436,19 +515,19 @@ def make_tools(get_service: object, config: Config) -> list:
                     not_interested, or closed. Leave empty to show all.
             limit: Maximum number of results (default 20).
         """
-        return asyncio.run(_svc().list_prospects(status=status, limit=limit))
+        return await _svc().list_prospects(status=status, limit=limit)
 
     @tool
-    def get_prospect(prospect_id: int) -> str:
+    async def get_prospect(prospect_id: int) -> str:
         """Get full details for a single prospect including all known email addresses.
 
         Args:
             prospect_id: The numeric ID of the prospect.
         """
-        return asyncio.run(_svc().get_prospect(prospect_id))
+        return await _svc().get_prospect(prospect_id)
 
     @tool
-    def update_prospect(
+    async def update_prospect(
         prospect_id: int,
         status: str | None = None,
         contact_name: str | None = None,
@@ -469,19 +548,41 @@ def make_tools(get_service: object, config: Config) -> list:
                                (e.g. '2026-04-07T14:30:00Z').
             primary_email: Set this email address as the primary one to use for outreach.
         """
-        return asyncio.run(
-            _svc().update_prospect(
-                prospect_id=prospect_id,
-                status=status,
-                contact_name=contact_name,
-                notes=notes,
-                last_contacted_at=last_contacted_at,
-                primary_email=primary_email,
-            )
+        return await _svc().update_prospect(
+            prospect_id=prospect_id,
+            status=status,
+            contact_name=contact_name,
+            notes=notes,
+            last_contacted_at=last_contacted_at,
+            primary_email=primary_email,
         )
 
     @tool
-    def find_contact_email(prospect_id: int) -> str:
+    async def research_prospect(prospect_id: int) -> str:
+        """Research a prospect by searching the web and synthesizing a structured company
+        profile (overview, products, key people, news, fit assessment). The profile is
+        saved as a Markdown file and returned. Requires TAVILY_API_KEY or EXA_API_KEY.
+
+        Args:
+            prospect_id: The numeric ID of the prospect to research.
+        """
+        return await _svc().research_prospect(prospect_id)
+
+    @tool
+    def get_prospect_profile(prospect_id: int) -> str:
+        """Return the saved Markdown company profile for a prospect, or a message
+        if no profile exists yet. Use research_prospect to generate one first.
+
+        Args:
+            prospect_id: The numeric ID of the prospect.
+        """
+        profile = _svc().get_profile(prospect_id)
+        if profile is None:
+            return f"No profile found for prospect {prospect_id}. Use research_prospect to generate one."
+        return profile
+
+    @tool
+    async def find_contact_email(prospect_id: int) -> str:
         """Search the web for contact email addresses for a prospect and store all found emails.
         The first email found becomes the primary. Skips URLs already visited recently.
         Requires TAVILY_API_KEY or EXA_API_KEY.
@@ -489,22 +590,22 @@ def make_tools(get_service: object, config: Config) -> list:
         Args:
             prospect_id: The numeric ID of the prospect to look up.
         """
-        return asyncio.run(_svc().find_contact_email(prospect_id))
+        return await _svc().find_contact_email(prospect_id)
 
     @tool
-    def get_pipeline_summary() -> str:
+    async def get_pipeline_summary() -> str:
         """Return a count of prospects grouped by outreach status.
         Use this to get an overview of how the sales pipeline is progressing."""
-        return asyncio.run(_svc().get_pipeline_summary())
+        return await _svc().get_pipeline_summary()
 
     @tool
-    def delete_prospect(prospect_id: int) -> str:
+    async def delete_prospect(prospect_id: int) -> str:
         """Permanently remove a prospect and all associated emails from the list.
 
         Args:
             prospect_id: The numeric ID of the prospect to delete.
         """
-        return asyncio.run(_svc().delete_prospect(prospect_id))
+        return await _svc().delete_prospect(prospect_id)
 
     return [
         get_research_brief,
@@ -514,6 +615,8 @@ def make_tools(get_service: object, config: Config) -> list:
         list_prospects,
         get_prospect,
         update_prospect,
+        research_prospect,
+        get_prospect_profile,
         find_contact_email,
         get_pipeline_summary,
         delete_prospect,

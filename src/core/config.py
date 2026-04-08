@@ -40,9 +40,7 @@ class Config:
 
         # Telegram Bot (DEPRECATED — superseded by FastAPI API, will be removed)
         self.TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-        self.ALLOWED_TELEGRAM_USER_IDS = os.getenv(
-            "ALLOWED_TELEGRAM_USER_IDS", ""
-        ).split(",")
+        self.ALLOWED_TELEGRAM_USER_IDS = os.getenv("ALLOWED_TELEGRAM_USER_IDS", "").split(",")
 
         # Google Calendar Credentials
         creds_dir = project_root / "credentials" / agent_name
@@ -75,15 +73,11 @@ class Config:
         self.ALEXA_DATA_DIR = self.DATA_DIR / "alexa"
 
         # Database
-        self.DATABASE_URL = os.getenv(
-            "DATABASE_URL", f"sqlite+aiosqlite:///{self.DATA_DIR}/app.db"
-        )
+        self.DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{self.DATA_DIR}/app.db")
 
         self.MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", "50"))
         self.CHECKPOINT_PURGE_DAYS = int(os.getenv("CHECKPOINT_PURGE_DAYS", "7"))
-        self.CHECKPOINT_PURGE_INTERVAL_HOURS = int(
-            os.getenv("CHECKPOINT_PURGE_INTERVAL_HOURS", "6")
-        )
+        self.CHECKPOINT_PURGE_INTERVAL_HOURS = int(os.getenv("CHECKPOINT_PURGE_INTERVAL_HOURS", "6"))
 
         self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
@@ -98,25 +92,17 @@ class Config:
         self.MARKET_RESEARCH_SEARCH_PROVIDER = os.getenv(
             "MARKET_RESEARCH_SEARCH_PROVIDER", "tavily"
         )  # "tavily" | "exa"
-        self.MARKET_RESEARCH_MAX_RESULTS = int(
-            os.getenv("MARKET_RESEARCH_MAX_RESULTS", "25")
-        )
-        self.MARKET_RESEARCH_URL_TTL_DAYS = int(
-            os.getenv("MARKET_RESEARCH_URL_TTL_DAYS", "7")
-        )
+        self.MARKET_RESEARCH_MAX_RESULTS = int(os.getenv("MARKET_RESEARCH_MAX_RESULTS", "25"))
+        self.MARKET_RESEARCH_URL_TTL_DAYS = int(os.getenv("MARKET_RESEARCH_URL_TTL_DAYS", "7"))
 
         # Plugins (comma-separated list of plugin names to load)
         self.PLUGINS = os.getenv("PLUGINS", "calendar,gmail")
 
         # System prompt
-        self.SYSTEM_PROMPT_TEMPLATE = os.getenv(
-            "SYSTEM_PROMPT_TEMPLATE", DEFAULT_SYSTEM_PROMPT_TEMPLATE
-        )
+        self.SYSTEM_PROMPT_TEMPLATE = os.getenv("SYSTEM_PROMPT_TEMPLATE", DEFAULT_SYSTEM_PROMPT_TEMPLATE)
 
     def build_system_prompt(self) -> str:
-        now = datetime.now(ZoneInfo("America/New_York")).strftime(
-            "%A, %Y-%m-%d %H:%M:%S"
-        )
+        now = datetime.now(ZoneInfo("America/New_York")).strftime("%A, %Y-%m-%d %H:%M:%S")
         return self.SYSTEM_PROMPT_TEMPLATE.format(datetime=now)
 
     def validate(self) -> None:
@@ -127,15 +113,10 @@ class Config:
             "qwen": ("QWEN_API_KEY", self.QWEN_API_KEY),
         }
         if self.LLM_PROVIDER not in required_keys:
-            raise ValueError(
-                f"Unknown LLM_PROVIDER '{self.LLM_PROVIDER}'. "
-                f"Choose from: {', '.join(required_keys)}"
-            )
+            raise ValueError(f"Unknown LLM_PROVIDER '{self.LLM_PROVIDER}'. Choose from: {', '.join(required_keys)}")
         key_name, key_value = required_keys[self.LLM_PROVIDER]
         if not key_value:
-            raise ValueError(
-                f"{key_name} is not set for provider '{self.LLM_PROVIDER}'."
-            )
+            raise ValueError(f"{key_name} is not set for provider '{self.LLM_PROVIDER}'.")
 
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.QDRANT_DB_PATH.mkdir(parents=True, exist_ok=True)

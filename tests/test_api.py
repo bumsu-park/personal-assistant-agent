@@ -9,9 +9,7 @@ from src.core.api import create_app
 @pytest.fixture
 def mock_graph():
     graph = AsyncMock()
-    graph.ainvoke.return_value = {
-        "messages": [MagicMock(content="Hello, how can I help?")]
-    }
+    graph.ainvoke.return_value = {"messages": [MagicMock(content="Hello, how can I help?")]}
     return graph
 
 
